@@ -12,12 +12,12 @@ class DatabaseSeeder extends Seeder
     {
         // Admin principal
         User::create([
-            'name'     => 'Administrador',
-            'email'    => 'admin@autocarteras.com',
-            'phone'    => '3170000000',
+            'name' => 'Administrador',
+            'email' => 'admin@autocarteras.com',
+            'phone' => '3170000000',
             'password' => 'admin123',
-            'role'     => 'admin',
-            'active'   => true,
+            'role' => 'admin',
+            'active' => true,
         ]);
 
         // Trabajadores de prueba
@@ -31,8 +31,8 @@ class DatabaseSeeder extends Seeder
             User::create([
                 ...$worker,
                 'password' => 'worker123',
-                'role'     => 'worker',
-                'active'   => true,
+                'role' => 'worker',
+                'active' => true,
             ]);
         }
 
@@ -50,5 +50,7 @@ class DatabaseSeeder extends Seeder
         foreach ($stages as $stage) {
             Stage::create([...$stage, 'active' => true]);
         }
+
+        $this->call(ProductSeeder::class);
     }
 }
