@@ -1,0 +1,61 @@
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: autocarteras_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    networks:
+      - autocarteras_network
+    depends_on:
+      - postgres
+      - redis
+
+  nginx:
+    image: nginx:alpine
+    container_name: autocarteras_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - autocarteras_network
+    depends_on:
+      - app
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: autocarteras_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: autocarteras_cali
+      POSTGRES_USER: autocarteras
+      POSTGRES_PASSWORD: secret123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - autocarteras_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: autocarteras_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - autocarteras_network
+
+volumes:
+  postgres_data:
+
+networks:
+  autocarteras_network:
+    driver: bridge
