@@ -115,8 +115,11 @@
                         class="absolute bottom-16 right-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-44" x-transition>
                         <a href="/users" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b border-gray-100">👥 Usuarios</a>
                         <a href="/stages" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">⚙️ Etapas</a>
+                        <a href="/material-purchases" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b border-gray-100">🧴 Materiales</a>
+                        <a href="/suppliers" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b border-gray-100">🏭 Proveedores</a>
                     </div>
                 </a>
+                
             @else
                 {{-- Nav simple para operativos --}}
                 <a href="/orders" class="nav-item flex flex-col items-center py-2 px-4 {{ request()->is('orders*') ? 'active' : '' }}">

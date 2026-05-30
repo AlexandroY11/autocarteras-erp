@@ -15,7 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
         $middleware->trustProxies(at: '*');
         $middleware->alias([
-            'can:admin' => App\Http\Middleware\EnsureUserIsAdmin::class,
+            'can:admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'admin'     => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
