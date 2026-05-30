@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\ClientController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\OrderController;
 use App\Http\Controllers\Web\PaymentController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\ProductionOrderController;
@@ -10,8 +11,7 @@ use App\Http\Controllers\Web\StageController;
 use Illuminate\Support\Facades\Route;
 
 // Redirigir raíz al login
-Route::get('/', fn () => redirect('/login'));
-
+Route::get('/dashboard', [DashboardController::class, 'index']);
 // Auth web
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
@@ -20,6 +20,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // Rutas protegidas
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/orders/{productionOrder}', [OrderController::class, 'show']);
     Route::post('/payments', [PaymentController::class, 'store']);
     Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
     Route::resource('/products', ProductController::class);

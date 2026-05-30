@@ -1,89 +1,168 @@
 <x-app-layout title="Dashboard">
+<div class="pt-4 space-y-5">
 
-    {{-- Estadísticas --}}
-    <div class="grid grid-cols-2 gap-3 mt-4">
-        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
-            <div class="text-3xl font-bold text-yellow-600">{{ $stats['pending'] }}</div>
-            <div class="text-xs text-yellow-700 mt-1">Pendientes</div>
-        </div>
-        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-            <div class="text-3xl font-bold text-blue-600">{{ $stats['in_progress'] }}</div>
-            <div class="text-xs text-blue-700 mt-1">En producción</div>
-        </div>
-        <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-            <div class="text-3xl font-bold text-green-600">{{ $stats['done'] }}</div>
-            <div class="text-xs text-green-700 mt-1">Terminadas</div>
-        </div>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-            <div class="text-3xl font-bold text-gray-600">{{ $stats['delivered'] }}</div>
-            <div class="text-xs text-gray-700 mt-1">Entregadas</div>
-        </div>
+    {{-- Header --}}
+    <div>
+        <h1 class="text-2xl font-black text-gray-900">Panel</h1>
+        <p class="text-sm text-gray-500">{{ now()->isoFormat('dddd, D [de] MMMM') }}</p>
     </div>
 
-    {{-- Búsqueda --}}
-    <form method="GET" action="/dashboard" class="mt-4">
-        <input type="text" name="search" value="{{ request('search') }}"
-            placeholder="Buscar por cliente o # orden..."
-            class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-    </form>
-
-    {{-- Botón nueva orden --}}
-    <a href="/production-orders/create"
-        class="mt-4 flex items-center justify-center gap-2 bg-blue-700 text-white font-semibold py-3 rounded-xl w-full">
-        + Nueva Orden
+    {{-- Alerta vencidas --}}
+    @if($stats['overdue'] > 0)
+    <a href="/orders?status=overdue"
+        class="flex items-center gap-3 bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+        <div class="text-3xl">⚠️</div>
+        <div>
+            <div class="font-bold text-red-700 text-base">{{ $stats['overdue'] }} orden(es) vencida(s)</div>
+            <div class="text-sm text-red-500">Requieren atención inmediata</div>
+        </div>
+        <svg class="w-5 h-5 text-red-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
     </a>
+    @endif
 
-    {{-- Filtro por etapa --}}
-    <div class="mt-4 flex gap-2 overflow-x-auto pb-1">
-        <a href="/dashboard"
-            class="shrink-0 text-xs px-3 py-1 rounded-full border {{ !request('stage') ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-300' }}">
-            Todas
-        </a>
-        @foreach($stages as $stage)
-        <a href="/dashboard?stage={{ $stage->id }}"
-            class="shrink-0 text-xs px-3 py-1 rounded-full border {{ request('stage') == $stage->id ? 'text-white border-transparent' : 'bg-white text-gray-600 border-gray-300' }}"
-            style="{{ request('stage') == $stage->id ? 'background-color:'.$stage->color.';border-color:'.$stage->color : '' }}">
-            {{ $stage->name }}
-        </a>
-        @endforeach
+    {{-- Métricas del mes --}}
+    <div>
+        <p class="section-title mb-3">Este mes</p>
+        <div class="grid grid-cols-2 gap-3">
+            <div class="card bg-white p-4">
+                <div class="text-xs font-semibold text-gray-400 mb-1">Recaudado</div>
+                <div class="text-2xl font-black text-green-600">${{ number_format($monthlyRevenue, 0, ',', '.') }}</div>
+                <div class="text-xs text-gray-400 mt-1">Pagos recibidos</div>
+            </div>
+            <div class="card bg-white p-4">
+                <div class="text-xs font-semibold text-gray-400 mb-1">Órdenes</div>
+                <div class="text-2xl font-black text-blue-700">{{ $monthlyOrders }}</div>
+                <div class="text-xs text-gray-400 mt-1">Nuevas este mes</div>
+            </div>
+            <div class="card bg-white p-4">
+                <div class="text-xs font-semibold text-gray-400 mb-1">Por cobrar</div>
+                <div class="text-2xl font-black text-orange-500">${{ number_format($totalPending, 0, ',', '.') }}</div>
+                <div class="text-xs text-gray-400 mt-1">Saldo pendiente</div>
+            </div>
+            <div class="card bg-white p-4">
+                <div class="text-xs font-semibold text-gray-400 mb-1">Entregadas</div>
+                <div class="text-2xl font-black text-gray-700">{{ $stats['delivered'] }}</div>
+                <div class="text-xs text-gray-400 mt-1">Total histórico</div>
+            </div>
+        </div>
     </div>
 
-    {{-- Lista de órdenes --}}
-    <div class="mt-3 space-y-3">
-        @forelse($orders as $order)
-        <a href="/production-orders/{{ $order->id }}"
-            class="block bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div class="flex justify-between items-start">
-                <div>
-                    <span class="text-xs text-gray-400">#{{ str_pad($order->consecutive, 3, '0', STR_PAD_LEFT) }}</span>
-                    <div class="font-semibold text-gray-800 mt-0.5">{{ $order->client->full_name }}</div>
-                    <div class="text-sm text-gray-500">{{ $order->product->name }}</div>
-                    <div class="text-sm text-gray-500">Color: <span class="font-medium">{{ $order->color }}</span></div>
-                </div>
-                <div class="text-right">
-                    @if($order->currentStage)
-                    <span class="text-xs text-white px-2 py-1 rounded-full"
-                        style="background-color: {{ $order->currentStage->color }}">
-                        {{ $order->currentStage->name }}
-                    </span>
-                    @endif
-                    <div class="text-xs text-gray-400 mt-2">
-                        {{ \Carbon\Carbon::parse($order->due_date)->format('d/m/Y') }}
+    {{-- Estado de producción --}}
+    <div>
+        <p class="section-title mb-3">Estado de producción</p>
+        <div class="card bg-white p-4 space-y-3">
+            @foreach($byStage as $stage)
+            @if($stage->orders_count > 0)
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full shrink-0" style="background: {{ $stage->color }}"></div>
+                <div class="flex-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-gray-700">{{ $stage->name }}</span>
+                        <span class="text-sm font-bold text-gray-900">{{ $stage->orders_count }}</span>
+                    </div>
+                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        @php $max = $byStage->max('orders_count'); @endphp
+                        <div class="h-full rounded-full transition-all"
+                            style="width: {{ $max > 0 ? ($stage->orders_count / $max * 100) : 0 }}%; background: {{ $stage->color }}">
+                        </div>
                     </div>
                 </div>
             </div>
-        </a>
-        @empty
-        <div class="text-center text-gray-400 py-12">
-            <div class="text-4xl mb-2">📋</div>
-            <div>No hay órdenes activas</div>
+            @endif
+            @endforeach
+            @if($byStage->sum('orders_count') === 0)
+            <div class="text-center text-gray-400 py-4 text-sm">Sin órdenes en producción</div>
+            @endif
         </div>
-        @endforelse
     </div>
 
-    {{-- Paginación --}}
-    <div class="mt-4">
-        {{ $orders->links() }}
+    {{-- Órdenes vencidas --}}
+    @if($overdueOrders->count() > 0)
+    <div>
+        <p class="section-title mb-3">Órdenes vencidas</p>
+        <div class="space-y-2">
+            @foreach($overdueOrders as $order)
+            <a href="/production-orders/{{ $order->id }}"
+                class="flex items-center gap-3 bg-white card p-3">
+                <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                    <span class="text-red-600 font-bold text-sm">#{{ str_pad($order->consecutive, 3, '0', STR_PAD_LEFT) }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-gray-800 truncate">{{ $order->client->full_name }}</div>
+                    <div class="text-xs text-gray-500 truncate">{{ $order->product->name }}</div>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="text-xs font-bold text-red-600">
+                        {{ $order->due_date->diffForHumans() }}
+                    </div>
+                    @if($order->currentStage)
+                    <div class="text-xs text-white px-2 py-0.5 rounded-full mt-1 inline-block"
+                        style="background: {{ $order->currentStage->color }}">
+                        {{ $order->currentStage->name }}
+                    </div>
+                    @endif
+                </div>
+            </a>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    {{-- Top ciudades --}}
+    @if($topCities->count() > 0)
+    <div>
+        <p class="section-title mb-3">Top ciudades</p>
+        <div class="card bg-white p-4 space-y-3">
+            @foreach($topCities as $city => $total)
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center text-sm">
+                    📍
+                </div>
+                <div class="flex-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-gray-700">{{ $city ?: 'Sin ciudad' }}</span>
+                        <span class="text-sm font-bold text-gray-900">{{ $total }} órdenes</span>
+                    </div>
+                    <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-500 rounded-full"
+                            style="width: {{ $topCities->max() > 0 ? ($total / $topCities->max() * 100) : 0 }}%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    {{-- Acceso rápido --}}
+    <div>
+        <p class="section-title mb-3">Acciones rápidas</p>
+        <div class="grid grid-cols-2 gap-3">
+            <a href="/production-orders/create"
+                class="card bg-blue-700 text-white p-4 flex flex-col gap-2 active:scale-95 transition-transform">
+                <span class="text-2xl">➕</span>
+                <span class="font-bold text-base">Nueva orden</span>
+            </a>
+            <a href="/orders"
+                class="card bg-white p-4 flex flex-col gap-2 active:scale-95 transition-transform">
+                <span class="text-2xl">📋</span>
+                <span class="font-bold text-base text-gray-800">Ver órdenes</span>
+            </a>
+            <a href="/clients/create"
+                class="card bg-white p-4 flex flex-col gap-2 active:scale-95 transition-transform">
+                <span class="text-2xl">👤</span>
+                <span class="font-bold text-base text-gray-800">Nuevo cliente</span>
+            </a>
+            <a href="/clients"
+                class="card bg-white p-4 flex flex-col gap-2 active:scale-95 transition-transform">
+                <span class="text-2xl">🔍</span>
+                <span class="font-bold text-base text-gray-800">Ver clientes</span>
+            </a>
+        </div>
     </div>
 
+</div>
 </x-app-layout>
