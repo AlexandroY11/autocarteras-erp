@@ -11,13 +11,14 @@ class Payment extends Model
         'production_order_id',
         'amount',
         'type',
+        'payment_method',
         'notes',
         'paid_at',
         'registered_by',
     ];
 
     protected $casts = [
-        'amount'  => 'decimal:2',
+        'amount' => 'decimal:2',
         'paid_at' => 'date',
     ];
 

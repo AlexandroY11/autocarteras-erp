@@ -35,6 +35,7 @@ class PaymentController extends Controller
             'production_order_id' => 'required|exists:production_orders,id',
             'amount' => 'required|numeric|min:1',
             'type' => 'required|in:advance,partial,final',
+            'payment_method' => 'required|in:efectivo,nequi',
             'notes' => 'nullable|string',
             'paid_at' => 'nullable|date',
         ]);

@@ -142,30 +142,62 @@
 
             <div>
                 <label class="text-xs text-gray-500">Departamento</label>
-                <select name="client_department"
-                    x-model="departmentId"
-                    @change="loadCities($event.target.value)"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Seleccionar departamento...</option>
-                    @foreach($departments as $dept)
-                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                    @endforeach
-                </select>
+                <x-searchable-select
+                    name="client_department"
+                    placeholder="Seleccionar departamento..."
+                    :options="$departments->map(fn($d) => ['value' => (string)$d->id, 'label' => $d->name])->toArray()"
+                    @selected.window="loadCities($event.detail.value)"
+                />
             </div>
 
             <div>
                 <label class="text-xs text-gray-500">Ciudad</label>
-                <select name="client_city"
-                    :disabled="!departmentId || loadingCities"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100">
-                    <option value="">
-                        <span x-text="loadingCities ? 'Cargando...' : (departmentId ? 'Seleccionar ciudad...' : 'Primero selecciona departamento')"></span>
-                    </option>
-                    <template x-for="city in cities" :key="city.id">
-                        <option :value="city.name" x-text="city.name"></option>
-                    </template>
-                </select>
+                <div x-show="!departmentId" 
+                    class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-400 bg-gray-50 rounded-lg">
+                    Primero selecciona departamento
+                </div>
+                <div x-show="departmentId && loadingCities"
+                    class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-400 bg-gray-50">
+                    Cargando...
+                </div>
+                <div x-show="departmentId && !loadingCities && cities.length > 0"
+                    x-data="{
+                        open: false,
+                        search: '',
+                        selectedCity: '',
+                        get filtered() {
+                            if (!this.search) return cities;
+                            const q = this.search.toLowerCase();
+                            return cities.filter(c => c.name.toLowerCase().includes(q));
+                        }
+                    }" @click.outside="open = false">
+                    <input type="hidden" name="client_city" :value="selectedCity">
+                    <button type="button" @click="open = !open"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span :class="selectedCity ? 'text-gray-800' : 'text-gray-400'"
+                            x-text="selectedCity || 'Seleccionar ciudad...'"></span>
+                        <span class="text-gray-400">▾</span>
+                    </button>
+                    <div x-show="open" x-transition
+                        class="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 overflow-hidden">
+                        <div class="p-2 border-b">
+                            <input type="text" x-model="search" @click.stop placeholder="Buscar ciudad..."
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                x-ref="citySearch"
+                                x-init="$watch('open', v => v && $nextTick(() => $refs.citySearch.focus()))">
+                        </div>
+                        <div class="max-h-48 overflow-y-auto">
+                            <template x-for="city in filtered" :key="city.id">
+                                <button type="button" @click="selectedCity = city.name; open = false"
+                                    class="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-gray-50"
+                                    x-text="city.name">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
             </div>
+            
         </div>
     </div>
 
@@ -190,9 +222,15 @@
 
         <div>
             <label class="text-xs text-gray-500">Color *</label>
-            <input type="text" name="color" required
-                placeholder="Ej: Negro, Gris, Blanco..."
-                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <x-searchable-select
+                name="color"
+                placeholder="Seleccionar color..."
+                :options="[
+                    ['value' => 'Negro', 'label' => 'Negro'],
+                    ['value' => 'Gris', 'label' => 'Gris'],
+                    ['value' => 'Beige', 'label' => 'Beige'],
+                ]"
+            />
         </div>
 
         <div class="border border-gray-200 rounded-xl p-3 space-y-2">
@@ -202,9 +240,26 @@
             </label>
             <div x-show="sticker" x-transition>
                 <label class="text-xs text-gray-500">Color de calcomanía</label>
-                <input type="text" name="sticker_color"
-                    placeholder="Ej: Rojo, Azul, Dorado..."
-                    class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <x-searchable-select
+                    name="sticker_color"
+                    placeholder="Seleccionar color..."
+                    :options="[
+                        ['value' => 'Rojo', 'label' => 'Rojo'],
+                        ['value' => 'Azul', 'label' => 'Azul'],
+                        ['value' => 'Amarillo', 'label' => 'Amarillo'],
+                        ['value' => 'Verde', 'label' => 'Verde'],
+                        ['value' => 'Naranja', 'label' => 'Naranja'],
+                        ['value' => 'Morado', 'label' => 'Morado'],
+                        ['value' => 'Rosa', 'label' => 'Rosa'],
+                        ['value' => 'Café', 'label' => 'Café'],
+                        ['value' => 'Gris', 'label' => 'Gris'],
+                        ['value' => 'Negro', 'label' => 'Negro'],
+                        ['value' => 'Blanco', 'label' => 'Blanco'],
+                        ['value' => 'Tornasol', 'label' => 'Tornasol'],
+                        ['value' => 'Dorado', 'label' => 'Dorado'],
+                        ['value' => 'Plateado', 'label' => 'Plateado'],
+                    ]"
+                />
             </div>
         </div>
 

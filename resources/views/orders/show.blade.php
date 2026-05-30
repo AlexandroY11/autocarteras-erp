@@ -115,14 +115,15 @@
         {{-- Registrar pago --}}
         @if($order->balance > 0 && auth()->user()->isAdmin())
         <form method="POST" action="/payments"
-            class="border border-gray-200 rounded-xl p-3 space-y-3 mb-3"
-            x-data="{}">
+            class="border border-gray-200 rounded-xl p-3 space-y-3 mb-3">
             @csrf
             <input type="hidden" name="production_order_id" value="{{ $order->id }}">
+            <input type="hidden" name="paid_at" value="{{ now()->toDateString() }}">
+
             <div class="grid grid-cols-2 gap-2">
                 <div>
                     <label class="text-xs text-gray-500">Monto</label>
-                    <input type="number" name="amount" min="1" step="1000"
+                    <input type="number" name="amount" min="1"
                         placeholder="0"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
@@ -136,7 +137,21 @@
                     </select>
                 </div>
             </div>
-            <input type="hidden" name="paid_at" value="{{ now()->toDateString() }}">
+
+            <div>
+                <label class="text-xs text-gray-500">Método de pago</label>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <label class="flex items-center gap-2 border border-gray-200 rounded-lg p-2 cursor-pointer has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                        <input type="radio" name="payment_method" value="efectivo" checked class="text-blue-600">
+                        <span class="text-sm">💵 Efectivo</span>
+                    </label>
+                    <label class="flex items-center gap-2 border border-gray-200 rounded-lg p-2 cursor-pointer has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                        <input type="radio" name="payment_method" value="nequi" class="text-blue-600">
+                        <span class="text-sm">📱 Nequi</span>
+                    </label>
+                </div>
+            </div>
+
             <button type="submit"
                 class="w-full bg-green-600 text-white text-sm font-semibold py-2 rounded-lg">
                 Registrar pago
@@ -155,6 +170,7 @@
                         'partial' => 'Parcial',
                         'final'   => 'Final',
                     } }}
+                    · {{ $payment->payment_method === 'nequi' ? '📱 Nequi' : '💵 Efectivo' }}
                     · {{ $payment->paid_at->format('d/m/Y') }}
                 </div>
             </div>
