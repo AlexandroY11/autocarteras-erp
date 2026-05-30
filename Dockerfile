@@ -28,4 +28,15 @@ RUN npm install && npm run build && rm -rf node_modules
 
 # Permisos
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
-    && chmod -R 775 /var/www/storage
+    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
+# Nginx
+COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
+
+# Supervisor — usar la carpeta que Alpine ya tiene configurada
+RUN mkdir -p /etc/supervisor.d/
+COPY docker/supervisor.conf /etc/supervisor.d/laravel.ini
+
+EXPOSE 80
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
