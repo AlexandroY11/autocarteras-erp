@@ -2,17 +2,17 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        // Actualizar enum de roles
-        Schema::table('users', function (Blueprint $table) {
-            $table->enum('role', ['admin', 'director', 'worker'])
-                  ->default('worker')
-                  ->change();
-        });
+        // PostgreSQL no permite cambiar enum directamente
+        // Agregamos 'director' como valor válido via raw SQL
+        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+        DB::statement("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'director', 'worker'))");
 
         // Tabla de habilidades
         Schema::create('user_skills', function (Blueprint $table) {
@@ -27,5 +27,7 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::dropIfExists('user_skills');
+        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+        DB::statement("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'worker'))");
     }
 };
