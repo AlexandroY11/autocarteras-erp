@@ -10,9 +10,12 @@ use App\Http\Controllers\Web\ProductionOrderController;
 use App\Http\Controllers\Web\StageController;
 use Illuminate\Support\Facades\Route;
 
-// Redirigir raíz al login
-Route::get('/dashboard', [DashboardController::class, 'index']);
-// Auth web
+// Raíz → redirige según autenticación
+Route::get('/', function () {
+    return auth()->check() ? redirect('/dashboard') : redirect('/login');
+});
+
+// Auth web — sin middleware
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -22,16 +25,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{productionOrder}', [OrderController::class, 'show']);
+
     Route::post('/payments', [PaymentController::class, 'store']);
     Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
+
     Route::resource('/products', ProductController::class);
     Route::resource('/clients', ClientController::class);
     Route::resource('/stages', StageController::class);
+    Route::resource('/users', App\Http\Controllers\Web\UserController::class);
     Route::resource('/production-orders', ProductionOrderController::class);
+
     Route::post('/production-orders/{productionOrder}/advance-stage',
         [ProductionOrderController::class, 'advanceStage']);
     Route::post('/production-orders/{productionOrder}/cancel',
         [ProductionOrderController::class, 'cancel']);
+
     Route::get('/api/cities/{department}', function ($departmentId) {
         return cache()->remember("cities_{$departmentId}", 3600, function () use ($departmentId) {
             return App\Models\City::where('department_id', $departmentId)
@@ -39,7 +47,6 @@ Route::middleware('auth')->group(function () {
                 ->get(['id', 'name']);
         });
     });
-    Route::resource('/users', App\Http\Controllers\Web\UserController::class);
 
     Route::get('/api/clients/search', function () {
         $q = request('q', '');
@@ -48,11 +55,10 @@ Route::middleware('auth')->group(function () {
         }
 
         return App\Models\Client::where('active', true)
-            ->where(function ($query) use ($q) {
-                $query->where('first_name', 'ilike', "%{$q}%")
-                    ->orWhere('last_name', 'ilike', "%{$q}%")
-                    ->orWhere('phone', 'ilike', "%{$q}%");
-            })
+            ->where(fn ($query) => $query->where('first_name', 'ilike', "%{$q}%")
+                      ->orWhere('last_name', 'ilike', "%{$q}%")
+                      ->orWhere('phone', 'ilike', "%{$q}%")
+            )
             ->limit(6)
             ->get(['id', 'first_name', 'last_name', 'phone', 'city'])
             ->map(fn ($c) => [
