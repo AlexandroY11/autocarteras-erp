@@ -13,11 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
-
+        $middleware->trustProxies(at: '*');
         $middleware->alias([
-            'can:admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'can:admin' => App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
     })->create();
