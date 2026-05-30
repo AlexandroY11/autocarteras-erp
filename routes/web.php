@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\ClientController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\PaymentController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\ProductionOrderController;
 use App\Http\Controllers\Web\StageController;
@@ -19,6 +20,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // Rutas protegidas
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::post('/payments', [PaymentController::class, 'store']);
+    Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
     Route::resource('/products', ProductController::class);
     Route::resource('/clients', ClientController::class);
     Route::resource('/stages', StageController::class);
@@ -29,7 +32,7 @@ Route::middleware('auth')->group(function () {
         [ProductionOrderController::class, 'cancel']);
     Route::get('/api/cities/{department}', function ($departmentId) {
         return cache()->remember("cities_{$departmentId}", 3600, function () use ($departmentId) {
-            return \App\Models\City::where('department_id', $departmentId)
+            return App\Models\City::where('department_id', $departmentId)
                 ->orderBy('name')
                 ->get(['id', 'name']);
         });
@@ -38,21 +41,23 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/api/clients/search', function () {
         $q = request('q', '');
-        if (strlen($q) < 2) return [];
+        if (strlen($q) < 2) {
+            return [];
+        }
 
-        return \App\Models\Client::where('active', true)
+        return App\Models\Client::where('active', true)
             ->where(function ($query) use ($q) {
                 $query->where('first_name', 'ilike', "%{$q}%")
-                    ->orWhere('last_name',  'ilike', "%{$q}%")
-                    ->orWhere('phone',      'ilike', "%{$q}%");
+                    ->orWhere('last_name', 'ilike', "%{$q}%")
+                    ->orWhere('phone', 'ilike', "%{$q}%");
             })
             ->limit(6)
             ->get(['id', 'first_name', 'last_name', 'phone', 'city'])
-            ->map(fn($c) => [
-                'id'    => $c->id,
-                'name'  => $c->first_name . ' ' . $c->last_name,
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->first_name.' '.$c->last_name,
                 'phone' => $c->phone,
-                'city'  => $c->city ?? '',
+                'city' => $c->city ?? '',
             ]);
     });
 });
