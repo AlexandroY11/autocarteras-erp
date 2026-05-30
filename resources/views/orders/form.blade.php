@@ -58,12 +58,14 @@
         },
 
         async loadCities(deptId) {
+            this.departmentId = deptId; 
             if (!deptId) { this.cities = []; return; }
             this.loadingCities = true;
             const res = await fetch('/api/cities/' + deptId);
             this.cities = await res.json();
             this.loadingCities = false;
         }
+
     }">
     @csrf
 
@@ -140,6 +142,7 @@
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
+            <!-- DEPARTAMENTO -->
             <div>
                 <label class="text-xs text-gray-500">Departamento</label>
                 <x-searchable-select
@@ -150,23 +153,28 @@
                 />
             </div>
 
+            <!-- CIUDAD -->
             <div>
                 <label class="text-xs text-gray-500">Ciudad</label>
+                
+                <!-- Estado: No hay departamento -->
                 <div x-show="!departmentId" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-400 bg-gray-50">
                     Primero selecciona departamento
                 </div>
+
                 <div x-show="departmentId">
+                    <!-- Estado: Cargando -->
                     <div x-show="loadingCities" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-400 bg-gray-50">
                         Cargando ciudades...
                     </div>
-                    <div x-show="!loadingCities && cities.length > 0"
-                        x-data="{ cityOptions: [] }"
-                        x-effect="cityOptions = cities.map(c => ({ value: c.name, label: c.name }))">
+
+                    <!-- El componente ahora recibe las ciudades mediante x-model -->
+                    <div x-show="!loadingCities">
                         <x-searchable-select
                             name="client_city"
-                            placeholder="Seleccionar ciudad..."
-                            :options="[]"
-                            x-bind:options="cityOptions"
+                            placeholder="Buscar ciudad..."
+                            :options="[]" 
+                            x-model="cities.map(c => ({ value: c.name, label: c.name }))"
                         />
                     </div>
                 </div>

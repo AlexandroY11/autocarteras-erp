@@ -28,10 +28,21 @@
     },
 
     init() {
+        this.updateLabel();
+        // Esto hace que si las opciones cambian externamente, el componente se actualice
+        this.$watch('options', () => this.updateLabel());
+    },
+
+    updateLabel() {
         const found = this.options.find(o => o.value == this.selected);
-        if (found) this.selectedLabel = found.label;
+        if (found) {
+            this.selectedLabel = found.label;
+        } else {
+            this.selectedLabel = '';
+            this.selected = '';
+        }
     }
-}" class="relative" @click.outside="open = false">
+}"  class="relative" @click.outside="open = false">
 
     <input type="hidden" name="{{ $name }}" :value="selected">
 
