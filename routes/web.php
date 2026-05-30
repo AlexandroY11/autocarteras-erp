@@ -24,28 +24,38 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/orders', [OrderController::class, 'index']);
-    Route::get('/orders/{productionOrder}', [OrderController::class, 'show']);
 
-    Route::post('/payments', [PaymentController::class, 'store']);
-    Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
+    // Solo admin
+    Route::middleware(function ($request, $next) {
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
 
-    Route::resource('/products', ProductController::class);
-    Route::resource('/clients', ClientController::class);
-    Route::resource('/stages', StageController::class);
-    Route::resource('/users', App\Http\Controllers\Web\UserController::class);
-    Route::resource('/production-orders', ProductionOrderController::class);
+        return $next($request);
+    })->group(function () {
+        Route::get('/production-orders/create', [ProductionOrderController::class, 'create']);
+        Route::post('/production-orders', [ProductionOrderController::class, 'store']);
+        Route::get('/production-orders/{production_order}/edit', [ProductionOrderController::class, 'edit']);
+        Route::put('/production-orders/{production_order}', [ProductionOrderController::class, 'update']);
+        Route::delete('/production-orders/{production_order}', [ProductionOrderController::class, 'destroy']);
+        Route::post('/production-orders/{productionOrder}/cancel', [ProductionOrderController::class, 'cancel']);
+        Route::post('/payments', [PaymentController::class, 'store']);
+        Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
+        Route::resource('/products', ProductController::class);
+        Route::resource('/clients', ClientController::class);
+        Route::resource('/stages', StageController::class);
+        Route::resource('/users', App\Http\Controllers\Web\UserController::class);
+    });
 
+    // Admin y operativos
+    Route::get('/production-orders/{production_order}', [ProductionOrderController::class, 'show']);
     Route::post('/production-orders/{productionOrder}/advance-stage',
         [ProductionOrderController::class, 'advanceStage']);
-    Route::post('/production-orders/{productionOrder}/cancel',
-        [ProductionOrderController::class, 'cancel']);
 
     Route::get('/api/cities/{department}', function ($departmentId) {
-        return cache()->remember("cities_{$departmentId}", 3600, function () use ($departmentId) {
-            return App\Models\City::where('department_id', $departmentId)
-                ->orderBy('name')
-                ->get(['id', 'name']);
-        });
+        return cache()->remember("cities_{$departmentId}", 3600, fn () => App\Models\City::where('department_id', $departmentId)
+                ->orderBy('name')->get(['id', 'name'])
+        );
     });
 
     Route::get('/api/clients/search', function () {
@@ -59,13 +69,10 @@ Route::middleware('auth')->group(function () {
                       ->orWhere('last_name', 'ilike', "%{$q}%")
                       ->orWhere('phone', 'ilike', "%{$q}%")
             )
-            ->limit(6)
-            ->get(['id', 'first_name', 'last_name', 'phone', 'city'])
+            ->limit(6)->get(['id', 'first_name', 'last_name', 'phone', 'city'])
             ->map(fn ($c) => [
-                'id' => $c->id,
-                'name' => $c->first_name.' '.$c->last_name,
-                'phone' => $c->phone,
-                'city' => $c->city ?? '',
+                'id' => $c->id, 'name' => $c->first_name.' '.$c->last_name,
+                'phone' => $c->phone, 'city' => $c->city ?? '',
             ]);
     });
 });

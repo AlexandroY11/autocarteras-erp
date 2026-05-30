@@ -79,68 +79,53 @@
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40 safe-area-pb"
         style="box-shadow: 0 -1px 3px rgba(0,0,0,0.06); padding-bottom: env(safe-area-inset-bottom);">
         <div class="flex justify-around items-center px-2 py-1 max-w-2xl mx-auto">
-
-            <a href="/dashboard" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('dashboard') ? 'active' : '' }}">
-                <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ request()->is('dashboard') ? '2.5' : '1.8' }}">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                </div>
-                <span class="text-xs font-semibold mt-0.5">Métricas</span>
-            </a>
-
-            <a href="/orders" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('orders*') ? 'active' : '' }}">
-                <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ request()->is('orders*') ? '2.5' : '1.8' }}">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                </div>
-                <span class="text-xs font-semibold mt-0.5">Órdenes</span>
-            </a>
-
-            <a href="/clients" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('clients*') ? 'active' : '' }}">
-                <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ request()->is('clients*') ? '2.5' : '1.8' }}">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                </div>
-                <span class="text-xs font-semibold mt-0.5">Clientes</span>
-            </a>
-
-            <a href="/products" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('products*') ? 'active' : '' }}">
-                <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ request()->is('products*') ? '2.5' : '1.8' }}">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                    </svg>
-                </div>
-                <span class="text-xs font-semibold mt-0.5">Productos</span>
-            </a>
-
             @if(auth()->user()->isAdmin())
-            <a href="/users" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('users*') || request()->is('stages*') ? 'active' : '' }}"
-                x-data="{ open: false }" @click.prevent="open = !open">
-                <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                </div>
-                <span class="text-xs font-semibold mt-0.5">Config</span>
-
-                {{-- Submenu --}}
-                <div x-show="open" @click.outside="open = false"
-                    class="absolute bottom-16 right-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-44"
-                    x-transition>
-                    <a href="/users" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b border-gray-100">
-                        👥 Usuarios
-                    </a>
-                    <a href="/stages" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        ⚙️ Etapas
-                    </a>
-                </div>
-            </a>
+                {{-- Nav completo para admin --}}
+                <a href="/dashboard" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('dashboard') ? 'active' : '' }}">
+                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold mt-0.5">Métricas</span>
+                </a>
+                <a href="/orders" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('orders*') || request()->is('production-orders*') ? 'active' : '' }}">
+                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold mt-0.5">Órdenes</span>
+                </a>
+                <a href="/clients" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('clients*') ? 'active' : '' }}">
+                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold mt-0.5">Clientes</span>
+                </a>
+                <a href="/products" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('products*') ? 'active' : '' }}">
+                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold mt-0.5">Productos</span>
+                </a>
+                <a href="/users" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('users*') || request()->is('stages*') ? 'active' : '' }}"
+                    x-data="{ open: false }" @click.prevent="open = !open">
+                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold mt-0.5">Config</span>
+                    <div x-show="open" @click.outside="open = false"
+                        class="absolute bottom-16 right-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-44" x-transition>
+                        <a href="/users" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b border-gray-100">👥 Usuarios</a>
+                        <a href="/stages" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">⚙️ Etapas</a>
+                    </div>
+                </a>
+            @else
+                {{-- Nav simple para operativos --}}
+                <a href="/orders" class="nav-item flex flex-col items-center py-2 px-4 {{ request()->is('orders*') ? 'active' : '' }}">
+                    <div class="nav-icon w-14 h-10 flex items-center justify-center">
+                        <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    </div>
+                    <span class="text-sm font-bold mt-0.5">Mis tareas</span>
+                </a>
             @endif
-
         </div>
     </nav>
 

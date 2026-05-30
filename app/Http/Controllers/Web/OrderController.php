@@ -10,16 +10,30 @@ class OrderController extends Controller
 {
     public function index()
     {
+        $user = auth()->user();
+
+        // Trabajadores ven solo sus tareas
+        if ($user->isOperative()) {
+            $myOrders = ProductionOrder::with(['client', 'product', 'currentStage', 'payments'])
+                ->whereNotIn('status', ['done', 'delivered', 'cancelled'])
+                ->whereHas('currentStage', fn ($q) => $q->whereIn('id', $user->skills->pluck('id'))
+                )
+                ->orderBy('due_date')
+                ->get();
+
+            return view('orders.operative', compact('myOrders'));
+        }
+
+        // Admin ve todo
         $stages = Stage::where('active', true)->orderBy('order')->get();
 
-        $orders = ProductionOrder::with(['client', 'product', 'currentStage'])
+        $orders = ProductionOrder::with(['client', 'product', 'currentStage', 'payments'])
             ->whereNotIn('status', ['delivered', 'cancelled'])
             ->when(request('stage'), fn ($q, $s) => $q->where('current_stage_id', $s))
             ->when(request('search'), fn ($q, $s) => $q->whereHas('client', fn ($q) => $q->where('first_name', 'ilike', "%{$s}%")
                       ->orWhere('last_name', 'ilike', "%{$s}%")
             )->orWhere('consecutive', 'like', "%{$s}%")
             )
-            ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
             ->orderByDesc('consecutive')
             ->paginate(20);
 
