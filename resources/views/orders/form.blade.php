@@ -152,52 +152,25 @@
 
             <div>
                 <label class="text-xs text-gray-500">Ciudad</label>
-                <div x-show="!departmentId" 
-                    class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-400 bg-gray-50 rounded-lg">
+                <div x-show="!departmentId" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-400 bg-gray-50">
                     Primero selecciona departamento
                 </div>
-                <div x-show="departmentId && loadingCities"
-                    class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-400 bg-gray-50">
-                    Cargando...
-                </div>
-                <div x-show="departmentId && !loadingCities && cities.length > 0"
-                    x-data="{
-                        open: false,
-                        search: '',
-                        selectedCity: '',
-                        get filtered() {
-                            if (!this.search) return cities;
-                            const q = this.search.toLowerCase();
-                            return cities.filter(c => c.name.toLowerCase().includes(q));
-                        }
-                    }" @click.outside="open = false">
-                    <input type="hidden" name="client_city" :value="selectedCity">
-                    <button type="button" @click="open = !open"
-                        class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <span :class="selectedCity ? 'text-gray-800' : 'text-gray-400'"
-                            x-text="selectedCity || 'Seleccionar ciudad...'"></span>
-                        <span class="text-gray-400">▾</span>
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 overflow-hidden">
-                        <div class="p-2 border-b">
-                            <input type="text" x-model="search" @click.stop placeholder="Buscar ciudad..."
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                x-ref="citySearch"
-                                x-init="$watch('open', v => v && $nextTick(() => $refs.citySearch.focus()))">
-                        </div>
-                        <div class="max-h-48 overflow-y-auto">
-                            <template x-for="city in filtered" :key="city.id">
-                                <button type="button" @click="selectedCity = city.name; open = false"
-                                    class="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 border-b border-gray-50"
-                                    x-text="city.name">
-                                </button>
-                            </template>
-                        </div>
+                <div x-show="departmentId">
+                    <div x-show="loadingCities" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-400 bg-gray-50">
+                        Cargando ciudades...
+                    </div>
+                    <div x-show="!loadingCities && cities.length > 0"
+                        x-data="{ cityOptions: [] }"
+                        x-effect="cityOptions = cities.map(c => ({ value: c.name, label: c.name }))">
+                        <x-searchable-select
+                            name="client_city"
+                            placeholder="Seleccionar ciudad..."
+                            :options="[]"
+                            x-bind:options="cityOptions"
+                        />
                     </div>
                 </div>
             </div>
-            
         </div>
     </div>
 
