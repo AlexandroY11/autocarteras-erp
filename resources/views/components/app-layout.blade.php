@@ -7,7 +7,6 @@
     <title>{{ $title ?? 'AutoCarteras Cali' }}</title>
     <link rel="manifest" href="/manifest.json">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @livewireStyles
 </head>
 <body class="bg-gray-100 min-h-screen">
 
@@ -25,17 +24,25 @@
 
     {{-- Menú inferior mobile --}}
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-50">
-        <a href="/dashboard" class="flex flex-col items-center text-xs {{ request()->is('dashboard') ? 'text-blue-700' : 'text-gray-500' }}">
+        <a href="/dashboard"
+            class="flex flex-col items-center text-xs {{ request()->is('dashboard') ? 'text-blue-700' : 'text-gray-500' }}">
             <span class="text-xl">📋</span> Órdenes
         </a>
-        <a href="/products" class="flex flex-col items-center text-xs {{ request()->is('products*') ? 'text-blue-700' : 'text-gray-500' }}">
+        <a href="/products"
+            class="flex flex-col items-center text-xs {{ request()->is('products*') ? 'text-blue-700' : 'text-gray-500' }}">
             <span class="text-xl">📦</span> Productos
         </a>
-        <a href="/clients" class="flex flex-col items-center text-xs {{ request()->is('clients*') ? 'text-blue-700' : 'text-gray-500' }}">
+        <a href="/clients"
+            class="flex flex-col items-center text-xs {{ request()->is('clients*') ? 'text-blue-700' : 'text-gray-500' }}">
             <span class="text-xl">👤</span> Clientes
         </a>
         @if(auth()->user()->isAdmin())
-        <a href="/stages" class="flex flex-col items-center text-xs {{ request()->is('stages*') ? 'text-blue-700' : 'text-gray-500' }}">
+        <a href="/users"
+            class="flex flex-col items-center text-xs {{ request()->is('users*') ? 'text-blue-700' : 'text-gray-500' }}">
+            <span class="text-xl">👥</span> Usuarios
+        </a>
+        <a href="/stages"
+            class="flex flex-col items-center text-xs {{ request()->is('stages*') ? 'text-blue-700' : 'text-gray-500' }}">
             <span class="text-xl">⚙️</span> Etapas
         </a>
         @endif
@@ -46,6 +53,22 @@
         {{ $slot }}
     </main>
 
-    @livewireScripts
+
+    <script>
+        @if(app()->isProduction())
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('SW registrado'))
+                .catch(e => console.log('SW error', e));
+        }
+        @else
+        // Desregistrar SW en desarrollo
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(reg => reg.unregister());
+            });
+        }
+        @endif
+    </script>
 </body>
 </html>

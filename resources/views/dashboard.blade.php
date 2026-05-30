@@ -20,6 +20,13 @@
         </div>
     </div>
 
+    {{-- Búsqueda --}}
+    <form method="GET" action="/dashboard" class="mt-4">
+        <input type="text" name="search" value="{{ request('search') }}"
+            placeholder="Buscar por cliente o # orden..."
+            class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </form>
+
     {{-- Botón nueva orden --}}
     <a href="/production-orders/create"
         class="mt-4 flex items-center justify-center gap-2 bg-blue-700 text-white font-semibold py-3 rounded-xl w-full">

@@ -17,15 +17,16 @@
         departmentId: '',
         cities: [],
         loadingCities: false,
-        clients: {{ $clients->map(fn($c) => ['id' => $c->id, 'name' => $c->first_name.' '.$c->last_name, 'phone' => $c->phone, 'city' => $c->city ?? ''])->toJson() }},
-        products: {{ $products->map(fn($p) => ['id' => $p->id, 'name' => $p->name, 'price' => $p->base_price])->toJson() }},
+        searchResults: [],
+        searching: false,
 
-        get filteredClients() {
-            if (this.clientSearch.length < 2) return [];
-            const q = this.clientSearch.toLowerCase();
-            return this.clients.filter(c =>
-                c.name.toLowerCase().includes(q) || c.phone.includes(q)
-            ).slice(0, 6);
+        async searchClients() {
+            if (this.clientSearch.length < 2) { this.searchResults = []; return; }
+            this.searching = true;
+            const res = await fetch('/api/clients/search?q=' + encodeURIComponent(this.clientSearch));
+            this.searchResults = await res.json();
+            this.searching = false;
+            this.showDropdown = true;
         },
 
         selectClient(client) {
@@ -36,7 +37,8 @@
         },
 
         selectProduct(id) {
-            const p = this.products.find(p => p.id == id);
+            const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])->toJson() }};
+            const p = products.find(p => p.id == id);
             if (p && !this.price) this.price = p.price;
         },
 
@@ -52,6 +54,7 @@
             this.clientSearch = '';
             this.departmentId = '';
             this.cities = [];
+            this.searchResults = [];
         },
 
         async loadCities(deptId) {
@@ -73,15 +76,18 @@
             <div class="relative">
                 <input type="text"
                     x-model="clientSearch"
-                    @input="showDropdown = true"
-                    @focus="showDropdown = true"
+                    @input.debounce.400ms="searchClients()"
                     @click.outside="showDropdown = false"
                     placeholder="Buscar por nombre o teléfono..."
                     class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
 
-                <div x-show="showDropdown && filteredClients.length > 0"
+                <div x-show="searching" class="absolute right-3 top-3 text-gray-400 text-xs">
+                    Buscando...
+                </div>
+
+                <div x-show="showDropdown && searchResults.length > 0"
                     class="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 overflow-hidden">
-                    <template x-for="client in filteredClients" :key="client.id">
+                    <template x-for="client in searchResults" :key="client.id">
                         <button type="button" @click="selectClient(client)"
                             class="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0">
                             <div class="text-sm font-medium" x-text="client.name"></div>
@@ -134,7 +140,6 @@
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
-            {{-- Departamento --}}
             <div>
                 <label class="text-xs text-gray-500">Departamento</label>
                 <select name="client_department"
@@ -143,12 +148,11 @@
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Seleccionar departamento...</option>
                     @foreach($departments as $dept)
-                    <option value="{{ $dept->id }}" data-name="{{ $dept->name }}">{{ $dept->name }}</option>
+                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                     @endforeach
                 </select>
             </div>
 
-            {{-- Ciudad --}}
             <div>
                 <label class="text-xs text-gray-500">Ciudad</label>
                 <select name="client_city"
@@ -162,7 +166,6 @@
                     </template>
                 </select>
             </div>
-
         </div>
     </div>
 
@@ -250,5 +253,6 @@
         class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-xl text-base transition">
         Crear Orden
     </button>
+
 </form>
 </x-app-layout>
