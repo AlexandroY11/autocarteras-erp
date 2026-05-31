@@ -13,7 +13,7 @@ use App\Http\Controllers\Web\StageController;
 use App\Http\Controllers\Web\SupplierController;
 use Illuminate\Support\Facades\Route;
 
-// Raíz → redirige según autenticación
+// Raíz
 Route::get('/', function () {
     return auth()->check() ? redirect('/orders') : redirect('/login');
 });
@@ -23,15 +23,18 @@ Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 
-// Rutas protegidas — todos los autenticados
 Route::middleware('auth')->group(function () {
 
+    // ── Rutas compartidas (admin + operativos) ──────────────────
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/orders',    [OrderController::class, 'index']);
 
-    // Ver y avanzar órdenes — admin y operativos
+    // Ver detalle de orden — whereNumber evita capturar /create
     Route::get('/production-orders/{production_order}',
-        [ProductionOrderController::class, 'show']);
+        [ProductionOrderController::class, 'show'])
+        ->whereNumber('production_order');
+
+    // Avanzar etapa — operativos y admin
     Route::post('/production-orders/{productionOrder}/advance-stage',
         [ProductionOrderController::class, 'advanceStage']);
 
@@ -63,10 +66,10 @@ Route::middleware('auth')->group(function () {
             ]);
     });
 
-    // Solo admin
+    // ── Solo admin ───────────────────────────────────────────────
     Route::middleware('admin')->group(function () {
 
-        // Órdenes de producción
+        // Órdenes de producción — create debe ir antes de {id}
         Route::get('/production-orders',
             [ProductionOrderController::class, 'index']);
         Route::get('/production-orders/create',
@@ -74,11 +77,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/production-orders',
             [ProductionOrderController::class, 'store']);
         Route::get('/production-orders/{production_order}/edit',
-            [ProductionOrderController::class, 'edit']);
+            [ProductionOrderController::class, 'edit'])
+            ->whereNumber('production_order');
         Route::put('/production-orders/{production_order}',
-            [ProductionOrderController::class, 'update']);
+            [ProductionOrderController::class, 'update'])
+            ->whereNumber('production_order');
         Route::delete('/production-orders/{production_order}',
-            [ProductionOrderController::class, 'destroy']);
+            [ProductionOrderController::class, 'destroy'])
+            ->whereNumber('production_order');
         Route::post('/production-orders/{productionOrder}/cancel',
             [ProductionOrderController::class, 'cancel']);
 
@@ -86,7 +92,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/payments',             [PaymentController::class, 'store']);
         Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
 
-        // CRUDs de configuración
+        // CRUDs
         Route::resource('/products',  ProductController::class);
         Route::resource('/clients',   ClientController::class);
         Route::resource('/stages',    StageController::class);

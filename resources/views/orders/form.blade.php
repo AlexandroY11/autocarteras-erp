@@ -184,17 +184,13 @@
 
     {{-- ── PRODUCTO ── --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
-        <h2 class="font-semibold text-gray-700 text-sm uppercase tracking-wide">📦 Producto</h2>
-        <select name="product_id" required
-            @change="selectProduct($event.target.value)"
-            class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Seleccionar producto...</option>
-            @foreach($products as $product)
-            <option value="{{ $product->id }}">
-                {{ $product->name }} — ${{ number_format($product->base_price, 0, ',', '.') }}
-            </option>
-            @endforeach
-        </select>
+        <h2 class="font-semibold text-gray-700 text-sm uppercase tracking-wide">Producto</h2>
+        <x-searchable-select
+            name="product_id"
+            placeholder="Buscar producto..."
+            :options="$products->map(fn($p) => ['value' => (string)$p->id, 'label' => $p->name . ' — $' . number_format($p->base_price, 0, ',', '.')])->toArray()"
+            @selected.window="selectProduct($event.detail.value)"
+        />
     </div>
 
     {{-- ── DETALLES ── --}}

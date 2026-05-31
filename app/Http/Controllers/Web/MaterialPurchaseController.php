@@ -50,19 +50,48 @@ class MaterialPurchaseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'material_id'  => 'required|exists:materials,id',
-            'supplier_id'  => 'nullable|exists:suppliers,id',
             'quantity'     => 'required|numeric|min:0.01',
             'unit_price'   => 'required|numeric|min:0',
             'purchased_at' => 'required|date',
             'notes'        => 'nullable|string',
         ]);
 
+        // Resolver proveedor
+        $supplierId = null;
+        if ($request->filled('new_supplier_name')) {
+            $supplier = \App\Models\Supplier::create([
+                'name'   => $request->new_supplier_name,
+                'phone'  => $request->new_supplier_phone,
+                'active' => true,
+            ]);
+            $supplierId = $supplier->id;
+        } elseif ($request->filled('supplier_id')) {
+            $supplierId = $request->supplier_id;
+        }
+
+        // Resolver material
+        if ($request->filled('new_material_name')) {
+            $request->validate([
+                'new_material_name' => 'required|string|max:255',
+                'new_material_unit' => 'required|in:kg,g,lt,ml,unidad',
+            ]);
+            $material = \App\Models\Material::create([
+                'name'        => $request->new_material_name,
+                'unit'        => $request->new_material_unit,
+                'supplier_id' => $supplierId,
+                'active'      => true,
+            ]);
+            $materialId = $material->id;
+        } else {
+            $request->validate(['material_id' => 'required|exists:materials,id']);
+            $materialId = $request->material_id;
+        }
+
         $total = $request->quantity * $request->unit_price;
 
         MaterialPurchase::create([
-            'material_id'   => $request->material_id,
-            'supplier_id'   => $request->supplier_id,
+            'material_id'   => $materialId,
+            'supplier_id'   => $supplierId,
             'quantity'      => $request->quantity,
             'unit_price'    => $request->unit_price,
             'total'         => $total,
