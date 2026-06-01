@@ -26,13 +26,12 @@ Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 
-Route::middleware(['web'])->group(function () {
-    Route::post('/webauthn/auth/options', [WebauthnAuthController::class, 'options'])
-        ->name('webauthn.auth.options');
+Route::post('/webauthn/auth/options',
+    [LaravelWebauthn\Http\Controllers\AuthenticateController::class, 'create']
+)->name('webauthn.auth.options');
 
-    Route::post('/webauthn/auth', [WebauthnAuthController::class, 'login'])
-        ->name('webauthn.auth');
-});
+Route::post('/webauthn/auth', [WebauthnAuthController::class, 'login'])
+    ->name('webauthn.auth');
 
 Route::middleware('auth')->group(function () {
 
