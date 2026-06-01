@@ -22,23 +22,30 @@
                 </p>
 
                 <div class="mb-6 text-left">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">
-                      Nombre del dispositivo
-                  </label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        Nombre del dispositivo
+                    </label>
 
-                  <input
-                      id="device-name"
-                      type="text"
-                      value="Mi dispositivo"
-                      maxlength="50"
-                      class="w-full rounded-2xl border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      placeholder="Ej: iPhone Personal"
-                  >
+                    <input
+                        id="device-name"
+                        type="text"
+                        maxlength="50"
+                        class="w-full rounded-2xl border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Ej: iPhone Personal"
+                    >
 
-                  <p class="text-xs text-gray-400 mt-2">
-                      Este nombre te ayudará a identificar la llave de acceso más adelante.
-                  </p>
-              </div>
+                    <p class="text-xs text-gray-400 mt-2">
+                        Este nombre aparecerá en tu lista de llaves de acceso para que puedas identificar fácilmente cada dispositivo.
+                    </p>
+                </div>
+
+                <button
+                    id="register-btn"
+                    type="button"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition-all"
+                >
+                    Registrar dispositivo
+                </button>
 
                 <div
                     id="status-box"
@@ -79,75 +86,152 @@
     <script src="{!! secure_asset('vendor/webauthn/webauthn.js') !!}"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+      document.addEventListener('DOMContentLoaded', function () {
 
-            const statusText = document.getElementById('status-text');
-            const errorBox = document.getElementById('error-box');
+          const statusText = document.getElementById('status-text');
+          const errorBox = document.getElementById('error-box');
+          const registerBtn = document.getElementById('register-btn');
+          const deviceNameInput = document.getElementById('device-name');
 
-            const publicKey = @json($publicKey);
+          const publicKey = @json($publicKey);
 
-            if (document.querySelector('meta[name="csrf-token"]')) {
-                axios.defaults.headers.common['X-CSRF-TOKEN'] =
-                    document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
+          if (document.querySelector('meta[name="csrf-token"]')) {
+              axios.defaults.headers.common['X-CSRF-TOKEN'] =
+                  document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+          }
 
-            function showError(message) {
-                console.error(message);
+          /**
+           * Detectar dispositivo automáticamente
+           */
+          function detectDeviceName() {
 
-                errorBox.classList.remove('hidden');
-                errorBox.innerText = message;
+              const ua = navigator.userAgent;
 
-                statusText.innerText = 'No fue posible registrar el dispositivo';
-            }
+              if (/iPhone/i.test(ua)) {
+                  return 'iPhone';
+              }
 
-            const webauthn = new WebAuthn(function(name, message) {
-                showError(message);
-            });
+              if (/iPad/i.test(ua)) {
+                  return 'iPad';
+              }
 
-            if (!webauthn.webAuthnSupport()) {
-                showError('Tu navegador o dispositivo no es compatible con Passkeys.');
-                return;
-            }
+              if (/Android/i.test(ua)) {
+                  return 'Android';
+              }
 
-            statusText.innerText = 'Esperando confirmación del sensor...';
+              if (/Windows/i.test(ua)) {
+                  return 'PC Windows';
+              }
 
-            webauthn.register(
-                publicKey,
-                function(data) {
+              if (/Macintosh|Mac OS X/i.test(ua)) {
+                  return 'Mac';
+              }
 
-                    statusText.innerText = 'Guardando dispositivo...';
+              if (/Linux/i.test(ua)) {
+                  return 'PC Linux';
+              }
 
-                    const deviceName =
-                        document.getElementById('device-name').value.trim()
-                        || 'Mi dispositivo';
+              return 'Mi dispositivo';
+          }
 
-                    axios.post("{{ route('webauthn.store') }}", {
-                        ...data,
-                        name: deviceName
-                    })
-                    .then(function(response) {
+          /**
+           * Sugerencia automática
+           */
+          deviceNameInput.value = detectDeviceName();
 
-                        statusText.innerText = 'Registro completado';
+          function showError(message) {
 
-                        if (response.data.callback) {
-                            window.location.href = response.data.callback;
-                            return;
-                        }
+              console.error(message);
 
-                        window.location.href = "{{ url('/profile') }}";
-                    })
-                    .catch(function(error) {
+              errorBox.classList.remove('hidden');
+              errorBox.innerText = message;
 
-                        console.error(error);
+              statusText.innerText = 'No fue posible registrar el dispositivo';
 
-                        if (error.response?.data?.message) {
-                            showError(error.response.data.message);
-                        } else {
-                            showError('Ocurrió un error al registrar el dispositivo.');
-                        }
-                    });
-                }
-            );
-        });
+              registerBtn.disabled = false;
+              registerBtn.innerText = 'Registrar dispositivo';
+          }
+
+          function clearError() {
+              errorBox.classList.add('hidden');
+              errorBox.innerText = '';
+          }
+
+          const webauthn = new WebAuthn(function(name, message) {
+              showError(message);
+          });
+
+          if (!webauthn.webAuthnSupport()) {
+
+              showError(
+                  'Tu navegador o dispositivo no es compatible con Passkeys.'
+              );
+
+              return;
+          }
+
+          statusText.innerText =
+              'Asigna un nombre al dispositivo y pulsa "Registrar dispositivo".';
+
+          registerBtn.addEventListener('click', function () {
+
+              clearError();
+
+              const deviceName = deviceNameInput.value.trim();
+
+              if (!deviceName) {
+                  showError('Debes escribir un nombre para este dispositivo.');
+                  return;
+              }
+
+              registerBtn.disabled = true;
+              registerBtn.innerText = 'Esperando confirmación...';
+
+              statusText.innerText =
+                  'Confirma con tu huella, Face ID o llave de acceso.';
+
+              webauthn.register(
+                  publicKey,
+                  function(data) {
+
+                      statusText.innerText =
+                          'Guardando dispositivo...';
+
+                      axios.post("{{ route('webauthn.store') }}", {
+                          ...data,
+                          name: deviceName
+                      })
+                      .then(function(response) {
+
+                          statusText.innerText =
+                              'Dispositivo registrado correctamente';
+
+                          registerBtn.innerText =
+                              'Registro completado';
+
+                          if (response.data.callback) {
+                              window.location.href = response.data.callback;
+                              return;
+                          }
+
+                          window.location.href =
+                              "{{ route('profile') }}";
+                      })
+                      .catch(function(error) {
+
+                          console.error(error);
+
+                          if (error.response?.data?.message) {
+                              showError(error.response.data.message);
+                          } else {
+                              showError(
+                                  'Ocurrió un error al registrar el dispositivo.'
+                              );
+                          }
+                      });
+                  }
+              );
+          });
+      });
     </script>
 </x-app-layout>
