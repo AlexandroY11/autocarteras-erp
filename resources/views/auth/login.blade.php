@@ -156,7 +156,10 @@
         const email = document.getElementById('email').value;
 
         if (!email) {
-            showError('Falta el correo', 'Por favor ingresa tu correo electrónico primero.');
+            showError(
+                'Falta el correo',
+                'Por favor ingresa tu correo electrónico primero.'
+            );
             return;
         }
 
@@ -168,12 +171,20 @@
         })
         .then(function(res) {
 
-            const publicKey = res.data;
+            console.log("RAW RESPONSE:", res.data);
 
-            console.log(publicKey);
-            console.log(publicKey.allowCredentials);
+            // ⚠️ FIX IMPORTANTE: estructura correcta
+            const publicKey = res.data.publicKey;
+
+            if (!publicKey) {
+                throw new Error('No se recibió publicKey desde el servidor');
+            }
+
+            console.log("PUBLIC KEY:", publicKey);
+            console.log("ALLOW CREDENTIALS:", publicKey.allowCredentials);
 
             try {
+
                 const webauthn = new WebAuthn();
 
                 webauthn.sign(publicKey, function(data) {
@@ -193,7 +204,7 @@
                         })
                         .catch(function(error) {
 
-                            console.error(error);
+                            console.error("AUTH ERROR:", error);
 
                             showError(
                                 'Error de autenticación',
@@ -208,7 +219,7 @@
 
             } catch (e) {
 
-                console.error(e);
+                console.error("WEBAUTHN ERROR:", e);
 
                 showError(
                     'Error WebAuthn en el navegador',
@@ -219,7 +230,7 @@
         })
         .catch(function(error) {
 
-            console.error(error);
+            console.error("OPTIONS ERROR:", error);
 
             showError(
                 'No se pudo iniciar WebAuthn',
