@@ -197,7 +197,7 @@
 
                             setTimeout(() => {
                                 window.location.href =
-                                    response.data.callback ?? "/profile";
+                                    response.data.callback ?? "/dashboard";
                             }, 800);
 
                         })
