@@ -12,6 +12,7 @@ use App\Http\Controllers\Web\ProductionOrderController;
 use App\Http\Controllers\Web\ProfileController;
 use App\Http\Controllers\Web\StageController;
 use App\Http\Controllers\Web\SupplierController;
+use App\Http\Controllers\Web\WebauthnAuthController;
 use Illuminate\Support\Facades\Route;
 use LaravelWebauthn\Facades\Webauthn;
 
@@ -25,13 +26,13 @@ Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 
-Route::post('/webauthn/auth/options',
-    [LaravelWebauthn\Http\Controllers\AuthenticateController::class, 'create']
-)->name('webauthn.auth.options');
+Route::middleware(['web'])->group(function () {
+    Route::post('/webauthn/auth/options', [WebauthnAuthController::class, 'options'])
+        ->name('webauthn.auth.options');
 
-Route::post('/webauthn/auth',
-    [LaravelWebauthn\Http\Controllers\AuthenticateController::class, 'store']
-)->name('webauthn.auth');
+    Route::post('/webauthn/auth', [WebauthnAuthController::class, 'login'])
+        ->name('webauthn.auth');
+});
 
 Route::middleware('auth')->group(function () {
 
