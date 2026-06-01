@@ -140,11 +140,21 @@
                 <a href="/stages" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('stages*') ? 'text-blue-600' : 'text-gray-400' }}">
                     <div class="p-1 rounded-xl {{ request()->is('stages*') ? 'bg-blue-50' : '' }}">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
                         </svg>
                     </div>
                     <span class="text-[10px] font-black uppercase tracking-tighter">Etapas</span>
                 </a>
+
+                <a href="/profile" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('profile') ? 'text-blue-600' : 'text-gray-400' }}">
+                    <div class="p-1 rounded-xl {{ request()->is('profile') ? 'bg-blue-50' : '' }}">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <span class="text-[10px] font-black uppercase tracking-tighter">Perfil</span>
+                </a>
+
 
                 <form method="POST" action="{{ route('logout') }}" class="shrink-0 min-w-[60px]">
                     @csrf

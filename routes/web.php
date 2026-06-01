@@ -12,6 +12,7 @@ use App\Http\Controllers\Web\ProductionOrderController;
 use App\Http\Controllers\Web\StageController;
 use App\Http\Controllers\Web\SupplierController;
 use Illuminate\Support\Facades\Route;
+use LaravelWebauthn\Facades\Webauthn;
 
 // Raíz
 Route::get('/', function () {
@@ -24,6 +25,10 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
+
+    Route::get('/profile', function( ) {
+        return view('profile');
+    })->name('profile');
 
     // ── Rutas compartidas (admin + operativos) ──────────────────
     Route::get('/dashboard', [DashboardController::class, 'index']);
