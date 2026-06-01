@@ -29,11 +29,16 @@
     </div>
 
     {{-- 2. PANEL DE FILTROS Y BÚSQUEDA --}}
-    <div x-show="showFilters" x-transition class="bg-gray-50 border border-gray-200 rounded-3xl p-5 shadow-inner">
-        <form method="GET" action="{{ route('products.index') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div x-show="showFilters" 
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="bg-gray-50 border border-gray-200 rounded-[2rem] p-4 shadow-inner">
+        
+        <form method="GET" action="{{ route('products.index') }}" class="flex flex-col md:flex-row gap-3">
             
-            {{-- Input de Búsqueda --}}
-            <div class="md:col-span-2 relative">
+            {{-- Input de Búsqueda (Crece para ocupar el espacio) --}}
+            <div class="flex-1 relative">
                 <input type="text" name="search" value="{{ request('search') }}"
                     placeholder="Buscar por nombre de producto..."
                     class="w-full border-none rounded-2xl px-5 py-3.5 pl-12 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm bg-white">
@@ -42,29 +47,32 @@
                 </svg>
             </div>
 
-            {{-- Filtro de Piezas y Botón --}}
+            {{-- Grupo de Filtro y Botón (Se mantienen juntos) --}}
             <div class="flex gap-2">
-                <select name="pieces" class="flex-1 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm bg-white">
+                <select name="pieces" 
+                    class="w-full md:w-48 border-none rounded-2xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm bg-white cursor-pointer">
                     <option value="">Todas las piezas</option>
                     <option value="1-5" {{ request('pieces') == '1-5' ? 'selected' : '' }}>1 a 5 piezas</option>
                     <option value="6-10" {{ request('pieces') == '6-10' ? 'selected' : '' }}>6 a 10 piezas</option>
                     <option value="11+" {{ request('pieces') == '11+' ? 'selected' : '' }}>Más de 10</option>
                 </select>
-                <button type="submit" class="bg-blue-700 text-white px-6 rounded-2xl font-bold text-sm hover:bg-blue-800 transition-colors shadow-lg shadow-blue-100">
+                
+                <button type="submit" 
+                    class="bg-blue-700 text-white px-8 rounded-2xl font-black text-sm hover:bg-blue-800 transition-all active:scale-95 shadow-md shadow-blue-100 shrink-0">
                     Buscar
                 </button>
             </div>
         </form>
         
-        {{-- Botón para limpiar filtros (Solo aparece si hay búsqueda activa) --}}
         @if(request()->hasAny(['search', 'pieces']))
             <div class="mt-3 flex justify-center">
-                <a href="{{ route('products.index') }}" class="text-xs font-bold text-gray-400 hover:text-blue-600 underline">
-                    Limpiar búsqueda y filtros
+                <a href="{{ route('products.index') }}" class="text-[10px] font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-colors">
+                    ✕ Limpiar filtros
                 </a>
             </div>
         @endif
     </div>
+
 
     {{-- 3. ESTADÍSTICAS RÁPIDAS --}}
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
