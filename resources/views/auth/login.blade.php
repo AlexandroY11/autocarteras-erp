@@ -16,6 +16,7 @@
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body class="bg-gray-50 min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
@@ -113,58 +114,117 @@
     </div>
 
 <script>
-axios.defaults.headers.common['X-CSRF-TOKEN'] =
-    document.querySelector('meta[name="csrf-token"]').content;
+    axios.defaults.headers.common['X-CSRF-TOKEN'] =
+        document.querySelector('meta[name="csrf-token"]').content;
 
-function startWebauthn() {
-
-    const email = document.getElementById('email').value;
-
-    if (!email) {
-        alert('Ingresa tu correo primero');
-        return;
+    /**
+     * ALERTAS CENTRALIZADAS
+     */
+    function showError(title, text = '') {
+        Swal.fire({
+            icon: 'error',
+            title: title,
+            text: text,
+            confirmButtonColor: '#1d4ed8'
+        });
     }
 
-    axios.post("{{ route('webauthn.auth.options') }}", {
-        email: email,
-        _token: document.querySelector('meta[name="csrf-token"]').content
-    })
-    .then(function(res) {
+    function showSuccess(title, text = '') {
+        Swal.fire({
+            icon: 'success',
+            title: title,
+            text: text,
+            timer: 1500,
+            showConfirmButton: false
+        });
+    }
 
-        const publicKey = res.data;
+    function showInfo(title, text = '') {
+        Swal.fire({
+            icon: 'info',
+            title: title,
+            text: text,
+            confirmButtonColor: '#1d4ed8'
+        });
+    }
 
-        const webauthn = new WebAuthn();
+    /**
+     * WEBAUTHN FLOW
+     */
+    function startWebauthn() {
 
-        webauthn.sign(publicKey, function(data) {
+        const email = document.getElementById('email').value;
 
-            axios.post("{{ route('webauthn.auth') }}", data)
-                .then(function(response) {
+        if (!email) {
+            showError('Falta el correo', 'Por favor ingresa tu correo electrónico primero.');
+            return;
+        }
 
-                    window.location.href =
-                        response.data.callback ?? "/home";
+        showInfo('Iniciando autenticación...', 'Preparamos tu llave de acceso');
 
-                })
-                .catch(function(error) {
+        axios.post("{{ route('webauthn.auth.options') }}", {
+            email: email,
+            _token: document.querySelector('meta[name="csrf-token"]').content
+        })
+        .then(function(res) {
 
-                    console.error(error);
+            const publicKey = res.data;
 
-                    alert(
-                        error?.response?.data?.message ??
-                        'Error en autenticación'
-                    );
+            try {
+                const webauthn = new WebAuthn();
+
+                webauthn.sign(publicKey, function(data) {
+
+                    showInfo('Verificando identidad...', 'Confirma en tu dispositivo');
+
+                    axios.post("{{ route('webauthn.auth') }}", data)
+                        .then(function(response) {
+
+                            showSuccess('Acceso autorizado', 'Redirigiendo...');
+
+                            setTimeout(() => {
+                                window.location.href =
+                                    response.data.callback ?? "/profile";
+                            }, 800);
+
+                        })
+                        .catch(function(error) {
+
+                            console.error(error);
+
+                            showError(
+                                'Error de autenticación',
+                                error?.response?.data?.message ??
+                                JSON.stringify(error?.response?.data) ??
+                                'No se pudo validar la llave de acceso'
+                            );
+
+                        });
 
                 });
 
+            } catch (e) {
+
+                console.error(e);
+
+                showError(
+                    'Error WebAuthn en el navegador',
+                    e.message ?? 'El dispositivo no soporta autenticación'
+                );
+            }
+
+        })
+        .catch(function(error) {
+
+            console.error(error);
+
+            showError(
+                'No se pudo iniciar WebAuthn',
+                error?.response?.data?.message ??
+                'Verifica el correo o intenta nuevamente'
+            );
         });
-
-    })
-    .catch(function(error) {
-
-        console.error(error);
-
-        alert('No se pudo iniciar WebAuthn');
-    });
-}
+    }
 </script>
 
 </body>
