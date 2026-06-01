@@ -111,7 +111,7 @@ return [
     */
 
     'redirects' => [
-        'login' => '/profile',
+        'login' => '/dashboard',
         'register' => '/profile',
         'key-confirmation' => '/profile',
     ],
