@@ -21,6 +21,25 @@
                     Usa tu huella digital o FaceID para registrar este dispositivo de forma segura.
                 </p>
 
+                <div class="mb-6 text-left">
+                  <label class="block text-sm font-bold text-gray-700 mb-2">
+                      Nombre del dispositivo
+                  </label>
+
+                  <input
+                      id="device-name"
+                      type="text"
+                      value="Mi dispositivo"
+                      maxlength="50"
+                      class="w-full rounded-2xl border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      placeholder="Ej: iPhone Personal"
+                  >
+
+                  <p class="text-xs text-gray-400 mt-2">
+                      Este nombre te ayudará a identificar la llave de acceso más adelante.
+                  </p>
+              </div>
+
                 <div
                     id="status-box"
                     class="bg-blue-50 text-blue-700 p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-3"
@@ -98,9 +117,13 @@
 
                     statusText.innerText = 'Guardando dispositivo...';
 
+                    const deviceName =
+                        document.getElementById('device-name').value.trim()
+                        || 'Mi dispositivo';
+
                     axios.post("{{ route('webauthn.store') }}", {
                         ...data,
-                        name: "Mi Dispositivo ({{ now()->format('d/m/Y') }})"
+                        name: deviceName
                     })
                     .then(function(response) {
 

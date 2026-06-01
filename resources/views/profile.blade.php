@@ -75,15 +75,19 @@
                                 </div>
 
                                 <form
+                                    id="delete-key-{{ $key->id }}"
                                     method="POST"
                                     action="{{ route('webauthn.destroy', $key->id) }}"
-                                    onsubmit="return confirm('¿Eliminar esta llave de acceso?')"
                                 >
                                     @csrf
                                     @method('DELETE')
 
                                     <button
-                                        type="submit"
+                                        type="button"
+                                        onclick="confirmDelete(
+                                            'delete-key-{{ $key->id }}',
+                                            'Se eliminará la llave de acceso {{ $key->name }}'
+                                        )"
                                         class="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl text-sm font-bold"
                                     >
                                         Eliminar
