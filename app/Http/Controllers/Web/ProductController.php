@@ -11,8 +11,12 @@ class ProductController extends Controller
     public function index()
     {
         $products = Product::query()
-            ->when(request('search'), fn ($q, $s) => $q->where('name', 'ilike', "%{$s}%")
-            )
+            ->when(request('search'), fn($q, $s) => $q->where('name', 'ilike', "%{$s}%"))
+            ->when(request('pieces'), function($q, $p) {
+                if ($p === '1-5') return $q->whereBetween('pieces', [1, 5]);
+                if ($p === '6-10') return $q->whereBetween('pieces', [6, 10]);
+                if ($p === '11+') return $q->where('pieces', '>', 10);
+            })
             ->orderBy('name')
             ->paginate(20);
 
