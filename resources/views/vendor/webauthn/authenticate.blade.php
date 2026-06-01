@@ -1,127 +1,150 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="author" content="Alexis Saettler" />
-  <!--
-    This file is part of asbiin/laravel-webauthn project.
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Seguro — AutoCarteras Cali</title>
 
-    @copyright Alexis SAETTLER © 2019–2022
-    @license MIT
-  -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
-  <title>{{ config('app.name', 'Laravel') }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios@1.2.6/dist/axios.min.js"></script>
 
-  <!-- Scripts -->
-  <script src="https://unpkg.com/axios@1.2.6/dist/axios.min.js" integrity="sha384-TiLmfbX5iPJnd6NZIGGUBlE7UcHkicSKG+1z9u33gDb40R39mnvlpvUlEekwxSd6" crossorigin="anonymous"></script>
-  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-  <script src="{!! secure_asset('vendor/webauthn/webauthn.js') !!}"></script>
+    <script src="{!! secure_asset('vendor/webauthn/webauthn.js') !!}"></script>
 
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css?family=Nunito:200,600" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 
-  <!-- Styles -->
-  <link href="{{ asset('css/app.css') }}" rel="stylesheet" />
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+    <style>
+        body{
+            font-family:'Plus Jakarta Sans',sans-serif;
+        }
+    </style>
 </head>
-<body>
-  <div id="app">
-    <main class="py-4">
-      <div class="container">
-        <div class="row justify-content-center">
-          <div class="col-xs-12 col-md-6 col-md-offset-3 col-md-offset-3-right  ">
-            <div class="card">
-              <div class="card-header">{{ trans('webauthn::messages.auth.title') }}</div>
 
-              <div class="card-body">
-                <div class="alert alert-danger d-none" role="alert" id="error"></div>
-                <div class="alert alert-success d-none" role="alert" id="success">
-                  {{ trans('webauthn::messages.success') }}
+<body class="bg-slate-50 min-h-screen flex items-center justify-center px-4 overflow-hidden">
+
+    <div class="absolute top-0 left-0 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-blue-50 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
+
+    <div class="w-full max-w-md relative z-10">
+
+        <div class="bg-white rounded-[3rem] shadow-2xl shadow-blue-100 border border-gray-100 p-10">
+
+            <div class="text-center">
+
+                <img src="/logo.png"
+                     class="h-20 mx-auto mb-6"
+                     alt="AutoCarteras">
+
+                <div class="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-200 animate-pulse">
+
+                    <svg class="w-12 h-12 text-white"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="2"
+                         stroke="currentColor">
+
+                        <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 3c1.288 0 2.512.24 3.638.678m8.305 11.066a10.009 10.009 0 00-1.007-3.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+
                 </div>
 
-                <h3 class="card-title">
-                  {{ trans('webauthn::messages.insertKey') }}
-                </h3>
+                <h1 class="text-3xl font-black text-gray-900 mb-3">
+                    Verificando identidad
+                </h1>
 
-                <p class="card-text text-center">
-                  <img src="https://ssl.gstatic.com/accounts/strongauth/Challenge_2SV-Gnubby_graphic.png" alt=""/>
+                <p class="text-gray-500 font-medium mb-8">
+                    Usa tu huella digital o FaceID para acceder al sistema.
                 </p>
 
-                <p class="card-text">
-                  {{ trans('webauthn::messages.buttonAdvise') }}
-                  <br />
-                  {{ trans('webauthn::messages.noButtonAdvise') }}
-                </p>
+                <div id="success"
+                     class="hidden bg-green-50 text-green-700 p-4 rounded-2xl text-sm font-bold mb-4">
+                    Acceso autorizado...
+                </div>
 
-                <a href="/" class="card-link" aria-pressed="true">{{ trans('webauthn::messages.cancel') }}</a>
-              </div>
+                <div id="error"
+                     class="hidden bg-red-50 text-red-700 p-4 rounded-2xl text-sm font-bold mb-4">
+                </div>
+
+                <div class="bg-blue-50 text-blue-700 p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-3">
+
+                    <svg class="w-5 h-5 animate-spin"
+                         viewBox="0 0 24 24">
+                        <circle class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"></circle>
+
+                        <path class="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+
+                    Esperando confirmación...
+                </div>
+
+                <a href="{{ route('login') }}"
+                   class="inline-block mt-8 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors">
+                    Cancelar acceso
+                </a>
+
             </div>
-          </div>
         </div>
-      </div>
+    </div>
 
-    </main>
-  </div>
+<script>
+const publicKey = @json($publicKey);
 
-  <script>
-    var publicKey = {!! json_encode($publicKey) !!};
+const errorBox = document.getElementById('error');
+const successBox = document.getElementById('success');
 
-    var errors = {
-      key_already_used: "{{ trans('webauthn::errors.key_already_used') }}",
-      key_not_allowed: "{{ trans('webauthn::errors.key_not_allowed') }}",
-      not_secured: "{{ trans('webauthn::errors.not_secured') }}",
-      not_supported: "{{ trans('webauthn::errors.not_supported') }}",
-    };
+axios.defaults.headers.common['X-CSRF-TOKEN'] =
+    document.querySelector('meta[name="csrf-token"]').content;
 
-    function errorMessage(name, message) {
-      switch (name) {
-      case 'InvalidStateError':
-        return errors.key_already_used;
-      case 'NotAllowedError':
-        return errors.key_not_allowed;
-      default:
-        return message;
-      }
-    }
+function showError(message)
+{
+    errorBox.classList.remove('hidden');
+    errorBox.innerText = message;
+}
 
-    function error(message) {
-      $('#error').text(message).removeClass('d-none');
-    }
+const webauthn = new WebAuthn((name, message) => {
+    showError(message);
+});
 
-    var webauthn = new WebAuthn((name, message) => {
-       error(errorMessage(name, message));
-    });
+if (!webauthn.webAuthnSupport()) {
+    showError('Este dispositivo no soporta Passkeys.');
+}
 
-    if (! webauthn.webAuthnSupport()) {
-      switch (webauthn.notSupportedMessage()) {
-        case 'not_secured':
-          error(errors.not_secured);
-          break;
-        case 'not_supported':
-          error(errors.not_supported);
-          break;
-      }
-    }
+webauthn.sign(
+    publicKey,
+    function(data)
+    {
+        successBox.classList.remove('hidden');
 
-    webauthn.sign(
-      publicKey,
-      function (data) {
-        $('#success').removeClass('d-none');
         axios.post("{{ route('webauthn.auth') }}", data)
-          .then(function (response) {
-            if (response.data.callback) {
-              window.location.href = response.data.callback;
-            }
-          })
-          .catch(function (error) {
-            console.log(error);
-          });
-      }
-    );
-  </script>
+            .then(function(response){
+
+                if(response.data.callback){
+                    window.location.href = response.data.callback;
+                } else {
+                    window.location.href = "/";
+                }
+
+            })
+            .catch(function(error){
+
+                console.error(error);
+
+                showError(
+                    error?.response?.data?.message
+                    ?? 'No fue posible verificar la identidad.'
+                );
+            });
+    }
+);
+</script>
+
 </body>
 </html>
