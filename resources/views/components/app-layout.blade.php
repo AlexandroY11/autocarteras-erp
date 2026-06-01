@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{{ $title ?? 'AutoCarteras Cali' }}</title>
-    <link rel="manifest" href="/manifest.json">
+    {{-- <link rel="manifest" href="/manifest.json"> --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         * { -webkit-tap-highlight-color: transparent; }
@@ -199,18 +199,19 @@
         </div>
     </nav>
 
-    @if(app()->isProduction())
     <script>
+        // Desregistrar cualquier service worker existente
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error', e));
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(reg => reg.unregister());
+            });
+            // Limpiar todo el caché
+            if ('caches' in window) {
+                caches.keys().then(keys => {
+                    keys.forEach(key => caches.delete(key));
+                });
+            }
         }
     </script>
-    @else
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
-        }
-    </script>
-    @endif
 </body>
 </html>

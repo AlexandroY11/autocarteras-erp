@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'can:admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'admin'     => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
+        $middleware->web(append: [
+            \App\Http\Middleware\NoCacheMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
     })->create();

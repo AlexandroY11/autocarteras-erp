@@ -15,7 +15,7 @@
             <p class="text-gray-500 text-sm mt-1">Sistema de Producción</p>
         </div>
 
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
             <div class="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg mb-4">
                 {{ $errors->first() }}
             </div>
