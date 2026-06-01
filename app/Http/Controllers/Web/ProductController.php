@@ -8,17 +8,23 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+
     public function index()
     {
         $products = Product::query()
-            ->when(request('search'), fn($q, $s) => $q->where('name', 'ilike', "%{$s}%"))
-            ->when(request('pieces'), function($q, $p) {
-                if ($p === '1-5') return $q->whereBetween('pieces', [1, 5]);
-                if ($p === '6-10') return $q->whereBetween('pieces', [6, 10]);
-                if ($p === '11+') return $q->where('pieces', '>', 10);
+            // Búsqueda por nombre
+            ->when(request('search'), function($query, $search) {
+                $query->where('name', 'ilike', "%{$search}%");
+            })
+            // Filtro por rango de piezas
+            ->when(request('pieces'), function($query, $pieces) {
+                if ($pieces === '1-5') return $query->whereBetween('pieces', [1, 5]);
+                if ($pieces === '6-10') return $query->whereBetween('pieces', [6, 10]);
+                if ($pieces === '11+') return $query->where('pieces', '>', 10);
             })
             ->orderBy('name')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString(); // Importante para que la paginación mantenga el filtro
 
         return view('products.index', compact('products'));
     }
