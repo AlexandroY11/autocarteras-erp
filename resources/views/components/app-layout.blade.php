@@ -24,6 +24,8 @@
         .section-title { font-size: 13px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
         select.input-field { appearance: auto; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 <body class="bg-gray-50 min-h-screen">
 
@@ -212,6 +214,26 @@
                 });
             }
         }
+
+        window.confirmDelete = function(formId, message = '¿Estás seguro de eliminar este registro?') {
+            Swal.fire({
+                title: '¿Confirmar eliminación?',
+                text: message,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#1d4ed8', // Tu azul de Tailwind (blue-700)
+                cancelButtonColor: '#ef4444',  // Tu rojo de Tailwind (red-500)
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true,
+                borderRadius: '1.5rem', // Para que combine con tus cards redondeadas
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(formId).submit();
+                }
+            })
+        }
+
     </script>
 </body>
 </html>
