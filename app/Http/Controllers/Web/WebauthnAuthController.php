@@ -7,33 +7,24 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use LaravelWebauthn\Services\Webauthn;
 use LaravelWebauthn\Models\WebauthnKey;
-use App\Services\Webauthn\WebauthnService;
-use LaravelWebauthn\Actions\LoginUserRetrieval;
-use LaravelWebauthn\Actions\PrepareAssertionData;
 
 class WebauthnAuthController extends Controller
 {
-    public function options(Request $request)
-    {
-        // Recuperar usuario y generar challenge
-        $user = app(LoginUserRetrieval::class)->handle($request);
-        $assertion = app(PrepareAssertionData::class)->handle($user);
-
-        return response()->json(
-            WebauthnService::formatPublicKey($assertion->publicKey)
-        );
-    }
 
     public function login(Request $request, Webauthn $webauthn)
     {
-        $key = WebauthnKey::where('credentialId', $request->id)->first();
+        $id = $request->id;
+
+        // Buscamos la llave probando el ID tal cual viene y también con el posible relleno '=='
+        $key = WebauthnKey::where('credentialId', $id)
+            ->orWhere('credentialId', $id . '==') 
+            ->orWhere('credentialId', str_replace(['-', '_'], ['+', '/'], $id) . '==')
+            ->first();
 
         if (!$key) {
-            return response()->json(['message' => 'Llave no encontrada'], 422);
+            return response()->json(['message' => 'Llave no encontrada en DB'], 422);
         }
 
-        // En v5.5 el método es validateAssertion
-        // Requiere la llave, el usuario y el array de datos
         if ($webauthn->validateAssertion($key, $key->user, $request->all())) {
             Auth::loginUsingId($key->user_id);
 
@@ -45,4 +36,5 @@ class WebauthnAuthController extends Controller
 
         return response()->json(['message' => 'Fallo de autenticación'], 403);
     }
+
 }
