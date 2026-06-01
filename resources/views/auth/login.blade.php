@@ -173,7 +173,6 @@
 
             console.log("RAW RESPONSE:", res.data);
 
-            // ⚠️ FIX IMPORTANTE: estructura correcta
             const publicKey = res.data.publicKey;
 
             if (!publicKey) {
