@@ -85,121 +85,71 @@
         {{ $slot }}
     </main>
 
-    {{-- Bottom nav --}}
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40"
-        style="box-shadow: 0 -1px 3px rgba(0,0,0,0.06); padding-bottom: env(safe-area-inset-bottom);">
-        <div class="flex justify-around items-center px-2 py-1 max-w-2xl mx-auto">
-
-            @if(auth()->user()->isAdmin())
-
-                {{-- Métricas --}}
-                <a href="/dashboard" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('dashboard') ? 'active' : '' }}">
-                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+    {{-- NAV INFERIOR MÓVIL --}}
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+        <nav class="flex items-center overflow-x-auto no-scrollbar py-3 px-6 scroll-smooth">
+            <div class="flex items-center gap-8 mx-auto min-w-max">
+                
+                <a href="/dashboard" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('dashboard') ? 'text-blue-600' : 'text-gray-400' }}">
+                    <div class="p-1 rounded-xl {{ request()->is('dashboard') ? 'bg-blue-50' : '' }}">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
                         </svg>
                     </div>
-                    <span class="text-xs font-semibold mt-0.5">Métricas</span>
+                    <span class="text-[10px] font-black uppercase tracking-tighter">Inicio</span>
                 </a>
 
-                {{-- Órdenes --}}
-                <a href="/orders" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('orders*') || request()->is('production-orders*') ? 'active' : '' }}">
-                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                <a href="/production-orders" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('production-orders*') ? 'text-blue-600' : 'text-gray-400' }}">
+                    <div class="p-1 rounded-xl {{ request()->is('production-orders*') ? 'bg-blue-50' : '' }}">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                         </svg>
                     </div>
-                    <span class="text-xs font-semibold mt-0.5">Órdenes</span>
+                    <span class="text-[10px] font-black uppercase tracking-tighter">Órdenes</span>
                 </a>
 
-                {{-- Clientes --}}
-                <a href="/clients" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('clients*') ? 'active' : '' }}">
-                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+                <a href="/clients" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('clients*') ? 'text-blue-600' : 'text-gray-400' }}">
+                    <div class="p-1 rounded-xl {{ request()->is('clients*') ? 'bg-blue-50' : '' }}">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                         </svg>
                     </div>
-                    <span class="text-xs font-semibold mt-0.5">Clientes</span>
+                    <span class="text-[10px] font-black uppercase tracking-tighter">Clientes</span>
                 </a>
 
-                {{-- Productos --}}
-                <a href="/products" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('products*') ? 'active' : '' }}">
-                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+                <a href="/products" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('products*') ? 'text-blue-600' : 'text-gray-400' }}">
+                    <div class="p-1 rounded-xl {{ request()->is('products*') ? 'bg-blue-50' : '' }}">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
                         </svg>
                     </div>
-                    <span class="text-xs font-semibold mt-0.5">Productos</span>
+                    <span class="text-[10px] font-black uppercase tracking-tighter">Productos</span>
                 </a>
 
-                {{-- Materiales --}}
-                <a href="/material-purchases" class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('material-purchases*') || request()->is('materials*') || request()->is('suppliers*') ? 'active' : '' }}">
-                    <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.25-8.25 4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/>
+                <a href="/users" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('users*') ? 'text-blue-600' : 'text-gray-400' }}">
+                    <div class="p-1 rounded-xl {{ request()->is('users*') ? 'bg-blue-50' : '' }}">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </div>
-                    <span class="text-xs font-semibold mt-0.5">Materiales</span>
+                    <span class="text-[10px] font-black uppercase tracking-tighter">Equipo</span>
                 </a>
 
-                {{-- Config con dropdown funcional --}}
-                <div class="relative" x-data="{ open: false }">
-                    <button type="button"
-                        @click="open = !open"
-                        class="nav-item flex flex-col items-center py-2 px-3 {{ request()->is('users*') || request()->is('stages*') || request()->is('suppliers*') || request()->is('materials*') ? 'active' : '' }}">
-                        <div class="nav-icon w-10 h-8 flex items-center justify-center">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <form method="POST" action="{{ route('logout') }}" class="shrink-0 min-w-[60px]">
+                    @csrf
+                    <button class="flex flex-col items-center gap-1 text-red-400 w-full">
+                        <div class="p-1">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                             </svg>
                         </div>
-                        <span class="text-xs font-semibold mt-0.5">Config</span>
+                        <span class="text-[10px] font-black uppercase tracking-tighter">Salir</span>
                     </button>
+                </form>
+            </div>
+        </nav>
+    </div>
 
-                    {{-- Dropdown hacia arriba --}}
-                    <div x-show="open"
-                        x-transition:enter="transition ease-out duration-150"
-                        x-transition:enter-start="opacity-0 translate-y-2"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-100"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 translate-y-2"
-                        @click.outside="open = false"
-                        class="absolute bottom-full right-0 mb-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-52"
-                        style="display: none;">
-
-                        <a href="/users" @click="open = false"
-                            class="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 border-b border-gray-100">
-                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
-                            </svg>
-                            Usuarios
-                        </a>
-
-                        <a href="/stages" @click="open = false"
-                            class="flex items-center gap-3 px-4 py-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 border-b border-gray-100">
-                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"/>
-                            </svg>
-                            Etapas
-                        </a>
-                    </div>
-                </div>
-
-            @else
-                {{-- Nav simple para operativos --}}
-                <a href="/orders" class="nav-item flex flex-col items-center py-2 px-4 {{ request()->is('orders*') ? 'active' : '' }}">
-                    <div class="nav-icon w-14 h-10 flex items-center justify-center">
-                        <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                        </svg>
-                    </div>
-                    <span class="text-sm font-bold mt-0.5">Mis tareas</span>
-                </a>
-            @endif
-
-        </div>
-    </nav>
 
     <script>
         // Desregistrar cualquier service worker existente
