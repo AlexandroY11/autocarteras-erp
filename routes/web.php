@@ -9,6 +9,7 @@ use App\Http\Controllers\Web\OrderController;
 use App\Http\Controllers\Web\PaymentController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\ProductionOrderController;
+use App\Http\Controllers\Web\ProfileController;
 use App\Http\Controllers\Web\StageController;
 use App\Http\Controllers\Web\SupplierController;
 use Illuminate\Support\Facades\Route;
@@ -26,9 +27,9 @@ Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
 
-    Route::get('/profile', function( ) {
-        return view('profile');
-    })->name('profile');
+    Route::get('/profile', [ProfileController::class, 'index'])
+        ->middleware('auth')
+        ->name('profile');
 
     // ── Rutas compartidas (admin + operativos) ──────────────────
     Route::get('/dashboard', [DashboardController::class, 'index']);

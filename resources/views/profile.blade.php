@@ -8,6 +8,12 @@
         </p>
     </div>
 
+    @if(session('status'))
+        <div class="mb-6 bg-green-100 text-green-700 px-4 py-3 rounded-2xl">
+            {{ session('status') }}
+        </div>
+    @endif
+
     <div class="space-y-6">
         {{-- Información Básica --}}
         <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
@@ -48,6 +54,45 @@
                 <p class="text-gray-400 text-sm mb-8 leading-relaxed">
                     Activa el inicio de sesión con tu huella digital o FaceID. Es más seguro y no necesitarás recordar tu contraseña.
                 </p>
+
+                @if($keys->count())
+                    <div class="mb-8 space-y-3">
+                        <h4 class="font-bold text-white">
+                            Dispositivos registrados
+                        </h4>
+
+                        @foreach($keys as $key)
+                            <div class="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
+                                <div>
+                                    <p class="font-bold text-white">
+                                        {{ $key->name }}
+                                    </p>
+
+                                    <p class="text-xs text-gray-400">
+                                        Registrado:
+                                        {{ $key->created_at->format('d/m/Y H:i') }}
+                                    </p>
+                                </div>
+
+                                <form
+                                    method="POST"
+                                    action="{{ route('webauthn.destroy', $key->id) }}"
+                                    onsubmit="return confirm('¿Eliminar esta llave de acceso?')"
+                                >
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button
+                                        type="submit"
+                                        class="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl text-sm font-bold"
+                                    >
+                                        Eliminar
+                                    </button>
+                                </form>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
 
                 <form method="GET" action="{{ route('webauthn.create') }}" @submit="registering = true">
                     @csrf
