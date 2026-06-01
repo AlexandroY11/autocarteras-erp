@@ -111,9 +111,9 @@ return [
     */
 
     'redirects' => [
-        'login' => null,
-        'register' => null,
-        'key-confirmation' => null,
+        'login' => '/profile',
+        'register' => '/profile',
+        'key-confirmation' => '/profile',
     ],
 
     /*
