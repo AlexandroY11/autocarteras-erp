@@ -3,6 +3,9 @@
     $title = $isEdit ? 'Editar Usuario' : 'Crear Usuario';
     $route = $isEdit ? "/users/{$user->id}" : "/users";
     $buttonText = $isEdit ? 'Actualizar Usuario' : 'Guardar Usuario';
+
+    // Recuperamos las habilidades seleccionadas (desde la relación o desde el input antiguo si hubo error)
+    $userSkills = old('skills', $isEdit ? $user->skills->pluck('id')->toArray() : []);
 @endphp
 
 <x-app-layout :title="$title">
@@ -88,6 +91,24 @@
                                 <span class="text-sm font-bold text-gray-700 group-hover:text-blue-700 transition-colors">Usuario Activo</span>
                             </label>
                         </div>
+                    </div>
+                </div>
+
+                {{-- SECCIÓN DE HABILIDADES (SKILLS) --}}
+                <div class="space-y-3 pt-4">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-wider">Habilidades (Permisos por Etapa)</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 rounded-[2rem] p-6 border border-gray-100">
+                        @foreach($stages as $stage)
+                            <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-transparent hover:border-blue-100 hover:shadow-sm transition-all cursor-pointer group">
+                                <input type="checkbox" name="skills[]" value="{{ $stage->id }}"
+                                    {{ in_array($stage->id, $userSkills) ? 'checked' : '' }}
+                                    class="w-5 h-5 text-blue-600 border-gray-200 rounded-lg focus:ring-blue-500 transition-all">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-700 group-hover:text-blue-700 transition-colors">{{ $stage->name }}</p>
+                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Etapa {{ $stage->order }}</p>
+                                </div>
+                            </label>
+                        @endforeach
                     </div>
                 </div>
             </div>

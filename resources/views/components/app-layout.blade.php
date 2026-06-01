@@ -23,6 +23,8 @@
         .input-field:focus { outline: none; border-color: #1d4ed8; }
         .section-title { font-size: 13px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
         select.input-field { appearance: auto; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -85,8 +87,8 @@
         {{ $slot }}
     </main>
 
-    {{-- NAV INFERIOR MÓVIL --}}
-    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+    {{-- NAV INFERIOR (AHORA PARA TODAS LAS PANTALLAS ) --}}
+    <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
         <nav class="flex items-center overflow-x-auto no-scrollbar py-3 px-6 scroll-smooth">
             <div class="flex items-center gap-8 mx-auto min-w-max">
                 
@@ -133,6 +135,15 @@
                         </svg>
                     </div>
                     <span class="text-[10px] font-black uppercase tracking-tighter">Equipo</span>
+                </a>
+
+                <a href="/stages" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('stages*') ? 'text-blue-600' : 'text-gray-400' }}">
+                    <div class="p-1 rounded-xl {{ request()->is('stages*') ? 'bg-blue-50' : '' }}">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <span class="text-[10px] font-black uppercase tracking-tighter">Etapas</span>
                 </a>
 
                 <form method="POST" action="{{ route('logout') }}" class="shrink-0 min-w-[60px]">
