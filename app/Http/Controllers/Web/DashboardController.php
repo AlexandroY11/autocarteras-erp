@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\ProductionOrder;
 use App\Models\Stage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -36,19 +37,20 @@ class DashboardController extends Controller
             ->whereYear('created_at', $year)
             ->count();
 
-        // Saldo pendiente total
+        // Saldo pendiente total (Añadimos with('payments') para evitar N+1)
         $totalPending = ProductionOrder::whereNotIn('status', ['cancelled'])
+            ->with('payments')
             ->get()
             ->sum(fn ($o) => max(0, $o->price - $o->payments->sum('amount')));
 
-        // Top ciudades
+        // Top ciudades (Actualizado para unir con la tabla 'cities')
         $topCities = ProductionOrder::join('clients', 'clients.id', '=', 'production_orders.client_id')
-            ->selectRaw('clients.city, count(*) as total')
-            ->whereNotNull('clients.city')
-            ->groupBy('clients.city')
+            ->join('cities', 'cities.id', '=', 'clients.city_id')
+            ->selectRaw('cities.name as city_name, count(*) as total')
+            ->groupBy('cities.id', 'cities.name')
             ->orderByDesc('total')
             ->limit(5)
-            ->pluck('total', 'city');
+            ->pluck('total', 'city_name');
 
         // Órdenes por etapa
         $byStage = Stage::where('active', true)
@@ -57,8 +59,8 @@ class DashboardController extends Controller
             ])
             ->get();
 
-        // Órdenes vencidas
-        $overdueOrders = ProductionOrder::with(['client', 'product', 'currentStage'])
+        // Órdenes vencidas (Cargamos client.city y client.department para la vista)
+        $overdueOrders = ProductionOrder::with(['client.city', 'client.department', 'product', 'currentStage'])
             ->whereNotIn('status', ['done', 'delivered', 'cancelled'])
             ->where('due_date', '<', today())
             ->orderBy('due_date')
