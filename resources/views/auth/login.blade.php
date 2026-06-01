@@ -170,6 +170,9 @@
 
             const publicKey = res.data;
 
+            console.log(publicKey);
+            console.log(publicKey.allowCredentials);
+
             try {
                 const webauthn = new WebAuthn();
 
