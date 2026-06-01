@@ -33,5 +33,5 @@
             </div>
         </div>
     </div>
-    @include('webauthn::register_script')
+    @include('webauthn::client_script')
 </x-app-layout>

@@ -44,6 +44,6 @@
             </div>
         </div>
     </div>
-    @include('webauthn::auth_script')
+    @include('webauthn::client_script')
 </body>
 </html>
