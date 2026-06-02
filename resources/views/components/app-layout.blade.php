@@ -101,8 +101,8 @@
                     <span class="text-[10px] font-black uppercase tracking-tighter">Inicio</span>
                 </a>
 
-                <a href="/production-orders" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('production-orders*') ? 'text-blue-600' : 'text-gray-400' }}">
-                    <div class="p-1 rounded-xl {{ request()->is('production-orders*') ? 'bg-blue-50' : '' }}">
+                <a href="/orders" class="flex flex-col items-center gap-1 shrink-0 min-w-[60px] {{ request()->is('orders*') ? 'text-blue-600' : 'text-gray-400' }}">
+                    <div class="p-1 rounded-xl {{ request()->is('orders*') ? 'bg-blue-50' : '' }}">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                         </svg>
@@ -204,6 +204,29 @@
                 }
             })
         }
+
+        window.confirmAction = function(event, message = 'Are you sure?') {
+            event.preventDefault(); 
+            const form = event.target;
+
+            Swal.fire({
+                title: message,
+                text: "No podrás deshacer esta acción",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, continuar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        }
+
+                
 
     </script>
 </body>

@@ -9,3 +9,18 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+.input-clean {
+    width: 100%;
+    background: #f9fafb;
+    border: none;
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+}
+
+.input-clean:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: #3b82f6;
+}
