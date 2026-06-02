@@ -100,19 +100,4 @@ Route::middleware('auth')->group(function () {
         Route::resource('/material-purchases', MaterialPurchaseController::class)
             ->except(['edit', 'update', 'show']);
     });
-
-    Route::get('/holidays/{year}', function($year) {
-        return response()->json(
-            Holiday::where('year', $year)
-                ->orderBy('date')
-                ->get(['date', 'name'])
-        );
-    });
-
-    Route::get('/holidays/check/{date}', function($date) {
-        return response()->json([
-            'is_holiday' => Holiday::isHoliday($date),
-            'date' => $date,
-        ]);
-    });
 });
