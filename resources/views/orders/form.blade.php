@@ -26,7 +26,12 @@
                 try {
                     const res = await fetch(`/api/holidays/${year}`);
                     const data = await res.json();
-                    this.holidays = data.map(h => h.date);
+                    this.holidays = data.map(h => {
+                        const dateStr = typeof h === 'string' ? h : h.date;
+                        return dateStr.substring(0, 10);
+                    });
+                    
+                    console.log('Festivos procesados correctamente:', this.holidays);
                 } catch (e) {
                     console.error('Error cargando festivos:', e);
                     this.holidays = [];
