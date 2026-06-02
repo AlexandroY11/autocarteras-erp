@@ -21,27 +21,16 @@
             holidays: [],
             dueDate: '',
             
-            getCityOptions() {
-                return this.cities.map(function(c) {
-                    return { value: c.id.toString(), label: c.name };
-                });
-            },
-            
             async init() {
-                console.log('Formulario inicializado');
-                
                 const year = new Date().getFullYear();
-                console.log('Cargando festivos para:', year);
                 try {
-                    const res = await fetch('/api/holidays/' + year);
+                    const res = await fetch(`/api/holidays/${year}`);
                     const data = await res.json();
-                    this.holidays = data.map(function(h) { return h.date; });
-                    console.log('Festivos cargados:', this.holidays.length, 'festivos');
+                    this.holidays = data.map(h => h.date);
                 } catch (e) {
                     console.error('Error cargando festivos:', e);
                     this.holidays = [];
                 }
-                
                 this.updateDueDate();
             },
             
@@ -65,17 +54,14 @@
             }, 
             
             selectProduct(id) { 
-                console.log('Producto seleccionado ID:', id);
-                var products = {!! json_encode($products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])) !!}; 
-                console.log('Productos disponibles:', products);
-                var p = products.find(function(item) { return item.id == id; }); 
-                console.log('Producto encontrado:', p);
+                const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])->toJson() }}; 
+                const p = products.find(p => p.id == id); 
                 if (p) { 
-                    this.price = p.price;
-                    console.log('Precio establecido:', this.price);
+                    // Actualizamos el precio (esto disparará automáticamente el cambio en el input y el saldo)
+                    this.price = parseFloat(p.price);
                     this.updateDueDate();
                 }
-            }, 
+            },
             
             newClient() { 
                 this.clientMode = 'new';
@@ -93,74 +79,61 @@
             }, 
             
             async loadCities(deptId) { 
-                console.log('Departamento seleccionado:', deptId);
                 this.departmentId = deptId; 
                 if (!deptId) { 
                     this.cities = []; 
-                    console.log('No hay departamento, ciudades vacías');
                     return; 
                 }
                 this.loadingCities = true; 
-                console.log('Cargando ciudades...');
-                try {
-                    const res = await fetch('/api/cities/' + deptId);
-                    this.cities = await res.json();
-                    console.log('Ciudades cargadas:', this.cities.length, 'ciudades');
-                    console.log('Lista de ciudades:', this.cities);
-                } catch (e) {
-                    console.error('Error cargando ciudades:', e);
-                    this.cities = [];
-                }
+                const res = await fetch('/api/cities/' + deptId);
+                this.cities = await res.json();
                 this.loadingCities = false; 
             },
             
             updateDueDate() {
-                console.log('Calculando fecha de compromiso...');
-                console.log('Hoy:', new Date().toISOString());
-                console.log('Festivos disponibles:', this.holidays.length);
+                let currentDate = new Date();
+                let businessDaysAdded = 0;
                 
-                var currentDate = new Date();
-                var businessDaysAdded = 0;
-                
+                // Avanzar día por día hasta encontrar 15 días hábiles
                 while (businessDaysAdded < 15) {
                     currentDate.setDate(currentDate.getDate() + 1);
                     
-                    var dayOfWeek = currentDate.getDay();
-                    var dateStr = currentDate.toISOString().split('T')[0];
+                    const dayOfWeek = currentDate.getDay(); // 0 = domingo
                     
-                    var isSunday = dayOfWeek === 0;
-                    var isHoliday = this.holidays.includes(dateStr);
+                    // Formatear la fecha a YYYY-MM-DD para comparar con los festivos
+                    const year = currentDate.getFullYear();
+                    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(currentDate.getDate()).padStart(2, '0');
+                    const dateStr = `${year}-${month}-${day}`;
                     
-                    console.log('Dia ' + (businessDaysAdded + 1) + ': ' + dateStr + ' (' + this.getDayName(dayOfWeek) + ') - Domingo: ' + isSunday + ', Festivo: ' + isHoliday);
-                    
-                    if (!isSunday && !isHoliday) {
+                    // Verificar si es día hábil (no domingo y no festivo)
+                    if (dayOfWeek !== 0 && !this.holidays.includes(dateStr)) {
                         businessDaysAdded++;
-                        console.log('  Dia habil contado');
-                    } else {
-                        console.log('  No es dia habil');
                     }
                 }
                 
-                var year = currentDate.getFullYear();
-                var month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                var day = String(currentDate.getDate()).padStart(2, '0');
-                this.dueDate = year + '-' + month + '-' + day;
+                const finalYear = currentDate.getFullYear();
+                const finalMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const finalDay = String(currentDate.getDate()).padStart(2, '0');
                 
-                console.log('Fecha de compromiso calculada:', this.dueDate);
+                this.dueDate = `${finalYear}-${finalMonth}-${finalDay}`;
             },
-            
-            getDayName(day) {
-                var days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-                return days[day];
-            },
+
             
             getBalance() {
-                var priceNum = parseFloat(this.price) || 0;
-                var advanceNum = parseFloat(this.advance) || 0;
-                var balance = Math.max(0, priceNum - advanceNum);
-                console.log('Calculo de saldo:', priceNum, '-', advanceNum, '=', balance);
-                return balance;
+                const priceNum = parseFloat(this.price) || 0;
+                const advanceNum = parseFloat(this.advance) || 0;
+                return Math.max(0, priceNum - advanceNum);
+            },
+
+            formatCurrency(value) {
+                return new Intl.NumberFormat('es-CO', {
+                    style: 'currency',
+                    currency: 'COP',
+                    minimumFractionDigits: 0
+                }).format(value);
             }
+
         }">
         
         @csrf 
@@ -177,7 +150,7 @@
                 <div class="relative"> 
                     <input type="text" x-model="clientSearch"
                             @input.debounce.400ms="searchClients()" @click.outside="showDropdown = false"
-                            placeholder="Buscar por nombre o telefono..."
+                            placeholder="Buscar por nombre o teléfono..."
                             class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <div x-show="searching" class="absolute right-3 top-3 text-gray-400 text-xs"> Buscando... </div>
                     <div x-show="showDropdown && searchResults.length > 0"
@@ -227,13 +200,13 @@
                     </div>
                 </div>
                 <div> 
-                    <label class="text-xs text-gray-500">Telefono / WhatsApp *</label> 
+                    <label class="text-xs text-gray-500">Teléfono / WhatsApp *</label> 
                     <input type="text" name="client_phone"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div> 
-                    <label class="text-xs text-gray-500">Direccion</label> 
-                    <input type="text" name="client_address"
+                    <label class="text-xs text-gray-500">Dirección *</label> 
+                    <input type="text" name="client_address" required
                             placeholder="Calle 123 # 45-67"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
@@ -243,7 +216,7 @@
                         name="client_department" 
                         placeholder="Seleccionar departamento..." 
                         :options="$departments->map(fn($d) => ['value' => (string) $d->id, 'label' => $d->name])->toArray()"
-                        x-on:selected.window="loadCities($event.detail.value)" /> 
+                        @selected.window="loadCities($event.detail.value)" /> 
                 </div>
                 <div> 
                     <label class="text-xs text-gray-500">Ciudad</label> 
@@ -257,10 +230,14 @@
                             Cargando ciudades... 
                         </div>
                         <div x-show="!loadingCities"> 
-                            <x-searchable-select 
-                                name="client_city"
-                                placeholder="Buscar ciudad..." 
-                                :options="getCityOptions()" /> 
+                            <!-- Usamos un select nativo estilizado para mayor compatibilidad con Alpine -->
+                            <select name="client_city" required
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                <option value="">Seleccionar ciudad...</option>
+                                <template x-for="city in cities" :key="city.id || city.name">
+                                    <option :value="city.name" x-text="city.name"></option>
+                                </template>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -284,7 +261,7 @@
                         'label' => $p->name . ' — $' . number_format($p->base_price, 0, ',', '.'),
                     ],
                 )->toArray()"
-                x-on:selected.window="selectProduct($event.detail.value)" />
+                @selected.window="selectProduct($event.detail.value)" />
         </div> 
         
         {{-- ── DETALLES ── --}}
@@ -308,10 +285,10 @@
                 <label class="flex items-center gap-2 cursor-pointer"> 
                     <input type="checkbox" name="sticker" value="1"
                         x-model="sticker" class="w-4 h-4 text-blue-600"> 
-                    <span class="text-sm text-gray-700">¿Lleva calcomania?</span> 
+                    <span class="text-sm text-gray-700">¿Lleva calcomanía?</span> 
                 </label>
                 <div x-show="sticker" x-transition> 
-                    <label class="text-xs text-gray-500">Color de calcomania</label>
+                    <label class="text-xs text-gray-500">Color de calcomanía</label>
                     <x-searchable-select name="sticker_color" 
                         placeholder="Seleccionar color..." :options="[
                             ['value' => 'Rojo', 'label' => 'Rojo'],
@@ -321,7 +298,7 @@
                             ['value' => 'Naranja', 'label' => 'Naranja'],
                             ['value' => 'Morado', 'label' => 'Morado'],
                             ['value' => 'Rosa', 'label' => 'Rosa'],
-                            ['value' => 'Cafe', 'label' => 'Cafe'],
+                            ['value' => 'Café', 'label' => 'Café'],
                             ['value' => 'Gris', 'label' => 'Gris'],
                             ['value' => 'Negro', 'label' => 'Negro'],
                             ['value' => 'Blanco', 'label' => 'Blanco'],
@@ -338,7 +315,7 @@
                     required 
                     x-model="dueDate"
                     class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <p class="text-xs text-gray-400 mt-1">Calculada automaticamente: 15 dias habiles (excluyendo domingos y festivos de Colombia)</p>
+                <p class="text-xs text-gray-400 mt-1">Calculada automáticamente: 15 días hábiles (excluyendo domingos y festivos de Colombia)</p>
             </div>
             <div> 
                 <label class="text-xs text-gray-500">Observaciones</label>
@@ -348,42 +325,49 @@
         </div> 
         
         {{-- ── PAGO ── --}}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-4">
             <h2 class="flex items-center gap-2 font-semibold text-gray-700 text-sm uppercase tracking-wide">
-                <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-500">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75m0 1.5v.75m0 1.5v.75m1.5-3.75h1.5m-1.5 1.5h1.5m-1.5 1.5h1.5m1.5-3.75h1.5m-1.5 1.5h1.5m-1.5 1.5h1.5m1.5-3.75h1.5m-1.5 1.5h1.5m-1.5 1.5h1.5m1.5-3.75H18a2.25 2.25 0 0 1 2.25 2.25v10.5A2.25 2.25 0 0 1 18 19.5H3.75a2.25 2.25 0 0 1-2.25-2.25V6.75A2.25 2.25 0 0 1 3.75 4.5Z" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-500">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75m0 1.5v.75m0 1.5v.75m10.5-4.5v.75m0 1.5v.75m0 1.5v.75m-9-6h9a2.25 2.25 0 0 1 2.25 2.25v13.5a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25V6.75A2.25 2.25 0 0 1 3.75 4.5Z" />
                 </svg>
-                Pago
-            </h2>            
-            <div> 
-                <label class="text-xs text-gray-500">Precio total *</label> 
-                <input type="number" 
-                    name="price"
-                    x-model.number="price" 
-                    required 
-                    min="0" 
-                    step="1000" 
-                    placeholder="0"
-                    class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <p class="text-xs text-gray-400 mt-1">Se llena automaticamente con el precio de la cartera al seleccionar el producto. Puedes editarlo si vendes a otro precio.</p>
+                Pago y Saldo
+            </h2>
+
+            <div class="grid grid-cols-2 gap-4">
+                {{-- Input de Precio --}}
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Precio Total</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-gray-400 text-sm">$</span>
+                        <input type="number" name="price" x-model.number="price" required
+                            class="w-full border border-gray-300 rounded-lg pl-7 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold">
+                    </div>
+                </div>
+
+                {{-- Input de Adelanto --}}
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Adelanto / Abono</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-gray-400 text-sm">$</span>
+                        <input type="number" name="advance" x-model.number="advance" required
+                            class="w-full border border-gray-300 rounded-lg pl-7 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-green-600 font-semibold">
+                    </div>
+                </div>
             </div>
-            <div> 
-                <label class="text-xs text-gray-500">Anticipo recibido</label> 
-                <input type="number"
-                    name="advance_payment" 
-                    x-model.number="advance" 
-                    min="0" 
-                    step="1000"
-                    class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <p class="text-xs text-gray-400 mt-1">Por defecto: $30.000</p>
+
+            {{-- Cuadro de Saldo Pendiente --}}
+            <div class="bg-gray-50 rounded-xl p-4 flex justify-between items-center border border-dashed border-gray-200">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider font-medium">Saldo Pendiente</p>
+                    <p class="text-2xl font-bold text-gray-800" x-text="formatCurrency(getBalance( ))"></p>
+                </div>
+                <div class="text-right">
+                    <span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                        Cobro en entrega
+                    </span>
+                </div>
             </div>
-            <div class="bg-red-50 rounded-lg p-4 flex justify-between items-center border border-red-200"> 
-                <span class="text-gray-700 font-medium">Saldo pendiente</span> 
-                <span class="font-bold text-xl text-red-600" 
-                    x-text="'$' + getBalance().toLocaleString('es-CO')">
-                </span> 
-            </div>
-        </div> 
+        </div>
         
         <button type="submit"
             class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-xl text-base transition">
