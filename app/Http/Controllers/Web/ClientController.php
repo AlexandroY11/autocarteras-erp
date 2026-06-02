@@ -115,4 +115,36 @@ class ClientController extends Controller
     {
         return redirect('/clients');
     }
+
+    public function search(Request $request)
+    {
+        $q = $request->get('q', '');
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $clients = Client::query()
+            ->where('active', true)
+            ->where(function ($query) use ($q) {
+                $query->where('first_name', 'ilike', "%{$q}%")
+                    ->orWhere('last_name', 'ilike', "%{$q}%")
+                    ->orWhere('phone', 'ilike', "%{$q}%");
+            })
+            ->with('city')
+            ->with('department')
+            ->limit(6)
+            ->get();
+
+        return response()->json(
+            $clients->map(fn ($c) => [
+                'id'         => $c->id,
+                'name'       => $c->full_name,
+                'phone'      => $c->phone,
+                'address'    => $c->address,
+                'city'       => $c->city?->name ?? '',
+                'department' => $c->department?->name ?? '',
+            ])
+        );
+    }
 }

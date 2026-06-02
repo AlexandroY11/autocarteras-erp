@@ -59,25 +59,7 @@ Route::middleware('auth')->group(function () {
         );
     });
 
-    Route::get('/api/clients/search', function () {
-        $q = request('q', '');
-        if (strlen($q) < 2) return [];
-
-        return App\Models\Client::where('active', true)
-            ->where(fn($query) =>
-                $query->where('first_name', 'ilike', "%{$q}%")
-                      ->orWhere('last_name',  'ilike', "%{$q}%")
-                      ->orWhere('phone',      'ilike', "%{$q}%")
-            )
-            ->limit(6)
-            ->get(['id', 'first_name', 'last_name', 'phone', 'city'])
-            ->map(fn($c) => [
-                'id'    => $c->id,
-                'name'  => $c->first_name.' '.$c->last_name,
-                'phone' => $c->phone,
-                'city'  => $c->city ?? '',
-            ]);
-    });
+    Route::get('/api/clients/search', [ClientController::class, 'search']);
 
     // ── Solo admin ───────────────────────────────────────────────
     Route::middleware('admin')->group(function () {
