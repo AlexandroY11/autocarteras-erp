@@ -211,16 +211,14 @@
                 </div>
                 <div> 
                     <label class="text-xs text-gray-500">Dirección *</label> 
-                    <input type="text" name="client_address" 
-                            :required="clientMode === 'new'"
+                    <input type="text" name="client_address" required
                             placeholder="Calle 123 # 45-67"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div> 
                     <label class="text-xs text-gray-500">Departamento</label> 
                     <x-searchable-select
-                        name="client_department"  
-                        :required="clientMode === 'new'"
+                        name="client_department" 
                         placeholder="Seleccionar departamento..." 
                         :options="$departments->map(fn($d) => ['value' => (string) $d->id, 'label' => $d->name])->toArray()"
                         @selected.window="loadCities($event.detail.value)" /> 
@@ -238,7 +236,7 @@
                         </div>
                         <div x-show="!loadingCities"> 
                             <!-- Usamos un select nativo estilizado para mayor compatibilidad con Alpine -->
-                            <select name="client_city" :required="clientMode === 'new'"
+                            <select name="client_city" required
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                                 <option value="">Seleccionar ciudad...</option>
                                 <template x-for="city in cities" :key="city.id || city.name">
