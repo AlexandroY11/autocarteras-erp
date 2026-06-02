@@ -19,7 +19,6 @@
             searchResults: [], 
             searching: false,
             holidays: [],
-            businessDays: 15,
             dueDate: '',
             
             async init() {
@@ -98,26 +97,34 @@
             
             updateDueDate() {
                 let currentDate = new Date();
-                let added = 0;
+                let businessDaysAdded = 0;
                 
-                // Usamos la variable dinámica businessDays en lugar del número fijo 15
-                while (added < this.businessDays) {
+                // Avanzar día por día hasta encontrar 15 días hábiles
+                while (businessDaysAdded < 15) {
                     currentDate.setDate(currentDate.getDate() + 1);
                     
-                    const dayOfWeek = currentDate.getDay();
-                    const y = currentDate.getFullYear();
-                    const m = String(currentDate.getMonth() + 1).padStart(2, '0');
-                    const d = String(currentDate.getDate()).padStart(2, '0');
-                    const dateStr = `${y}-${m}-${d}`;
+                    const dayOfWeek = currentDate.getDay(); // 0 = domingo
                     
+                    // Formatear la fecha a YYYY-MM-DD para comparar con los festivos
+                    const year = currentDate.getFullYear();
+                    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(currentDate.getDate()).padStart(2, '0');
+                    const dateStr = `${year}-${month}-${day}`;
+                    
+                    // Verificar si es día hábil (no domingo y no festivo)
                     if (dayOfWeek !== 0 && !this.holidays.includes(dateStr)) {
-                        added++;
+                        businessDaysAdded++;
                     }
                 }
                 
-                this.dueDate = currentDate.toISOString().split('T')[0];
-            }
+                const finalYear = currentDate.getFullYear();
+                const finalMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const finalDay = String(currentDate.getDate()).padStart(2, '0');
+                
+                this.dueDate = `${finalYear}-${finalMonth}-${finalDay}`;
+            },
 
+            
             getBalance() {
                 const priceNum = parseFloat(this.price) || 0;
                 const advanceNum = parseFloat(this.advance) || 0;
@@ -306,38 +313,15 @@
                         ]" />
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                {{-- Selector de Días Hábiles --}}
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Días de Producción (Hábiles)</label>
-                    <div class="relative flex items-center">
-                        <input type="number" 
-                            x-model.number="businessDays" 
-                            @input="updateDueDate()"
-                            min="1" max="60"
-                            class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-600">
-                        <span class="absolute right-3 text-gray-400 text-xs">días</span>
-                    </div>
-                </div>
-
-                {{-- Fecha de Compromiso (Automática) --}}
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Fecha de Compromiso</label>
-                    <div class="relative">
-                        <input type="date" 
-                            name="due_date" 
-                            x-model="dueDate" 
-                            readonly 
-                            class="w-full border border-gray-100 rounded-lg px-4 py-3 text-sm bg-gray-50 text-gray-500 cursor-not-allowed font-medium">
-                        <div class="absolute right-3 top-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
+            <div> 
+                <label class="text-xs text-gray-500">Fecha compromiso *</label> 
+                <input type="date"
+                    name="due_date" 
+                    required 
+                    x-model="dueDate"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-400 mt-1">Calculada automáticamente: 15 días hábiles (excluyendo domingos y festivos de Colombia)</p>
             </div>
-
             <div> 
                 <label class="text-xs text-gray-500">Observaciones</label>
                 <textarea name="observations" rows="2" placeholder="Detalles especiales del cliente..."
