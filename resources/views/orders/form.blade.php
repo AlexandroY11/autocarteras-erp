@@ -354,7 +354,7 @@
                     <label class="text-xs text-gray-500 mb-1 block">Adelanto / Abono</label>
                     <div class="relative">
                         <span class="absolute left-3 top-3 text-gray-400 text-sm">$</span>
-                        <input type="number" name="advance" x-model.number="advance" 
+                        <input type="number" name="advance_payment" x-model.number="advance" 
                             class="w-full border border-gray-300 rounded-lg pl-7 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-green-600 font-semibold">
                     </div>
                 </div>
