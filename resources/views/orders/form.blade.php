@@ -54,8 +54,8 @@
             }, 
             
             selectProduct(id) { 
-                const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => parseFloat($p->base_price)])->toJson() }}; 
-                const p = products.find(product => product.id == id); 
+                const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])->toJson() }}; 
+                const p = products.find(p => p.id == id); 
                 if (p) { 
                     this.price = p.price;
                     this.updateDueDate();
@@ -242,7 +242,7 @@
                         'label' => $p->name . ' — $' . number_format($p->base_price, 0, ',', '.'),
                     ],
                 )->toArray()"
-                @selected.window="(e) => { selectProduct(e.detail.value); }" />
+                @selected.window="selectProduct($event.detail.value)" />
         </div> 
         
         {{-- ── DETALLES ── --}}
