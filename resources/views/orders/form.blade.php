@@ -211,7 +211,7 @@
                 </div>
                 <div> 
                     <label class="text-xs text-gray-500">Dirección *</label> 
-                    <input type="text" name="client_address" required
+                    <input type="text" name="client_address" 
                             placeholder="Calle 123 # 45-67"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
@@ -236,7 +236,7 @@
                         </div>
                         <div x-show="!loadingCities"> 
                             <!-- Usamos un select nativo estilizado para mayor compatibilidad con Alpine -->
-                            <select name="client_city" required
+                            <select name="client_city" 
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                                 <option value="">Seleccionar ciudad...</option>
                                 <template x-for="city in cities" :key="city.id || city.name">
@@ -258,7 +258,7 @@
                 Producto
             </h2>            
             <x-searchable-select
-                name="product_id" 
+                name="product_id" required
                 placeholder="Buscar producto..." 
                 :options="$products->map(
                     fn($p) => [
@@ -279,7 +279,7 @@
             </h2>           
             <div> 
                 <label class="text-xs text-gray-500">Color *</label> 
-                <x-searchable-select name="color"
+                <x-searchable-select name="color" required
                     placeholder="Seleccionar color..." :options="[
                         ['value' => 'Negro', 'label' => 'Negro'],
                         ['value' => 'Gris', 'label' => 'Gris'],
@@ -317,7 +317,7 @@
                 <label class="text-xs text-gray-500">Fecha compromiso *</label> 
                 <input type="date"
                     name="due_date" 
-                    required 
+                    required
                     x-model="dueDate"
                     class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <p class="text-xs text-gray-400 mt-1">Calculada automáticamente: 15 días hábiles (excluyendo domingos y festivos de Colombia)</p>
@@ -354,7 +354,7 @@
                     <label class="text-xs text-gray-500 mb-1 block">Adelanto / Abono</label>
                     <div class="relative">
                         <span class="absolute left-3 top-3 text-gray-400 text-sm">$</span>
-                        <input type="number" name="advance" x-model.number="advance" required
+                        <input type="number" name="advance" x-model.number="advance" 
                             class="w-full border border-gray-300 rounded-lg pl-7 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-green-600 font-semibold">
                     </div>
                 </div>

@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\Department;
+use App\Models\City;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductionOrder;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
@@ -12,25 +15,21 @@ use Illuminate\Http\Request;
 
 class ProductionOrderController extends Controller
 {
-    public function __construct(private ProductionOrderService $service)
-    {
-    }
+    public function __construct(private ProductionOrderService $service) {}
 
     public function index()
     {
-        return redirect('/dashboard');
+        return redirect('/orders');
     }
 
     public function create()
     {
-        $clients = Client::where('active', true)->orderBy('first_name')->get();
-        $products = Product::where('active', true)->orderBy('name')->get();
-        $departments = \App\Models\Department::orderBy('name')->get();
+        $products    = Product::where('active', true)->orderBy('name')->get();
+        $departments = Department::orderBy('name')->get();
 
         return view('orders.form', [
-            'order' => new ProductionOrder(),
-            'clients' => $clients,
-            'products' => $products,
+            'order'       => new ProductionOrder(),
+            'products'    => $products,
             'departments' => $departments,
         ]);
     }
@@ -38,65 +37,84 @@ class ProductionOrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            // Cliente existente o nuevo
-            'client_id' => 'nullable|exists:clients,id',
-            'client_first_name' => 'required_without:client_id|string|max:100',
-            'client_last_name' => 'required_without:client_id|string|max:100',
-            'client_phone' => 'required_without:client_id|string|max:20',
-            'client_email' => 'nullable|email|max:255',
-            'client_city' => 'nullable|string|max:100',
-            'client_department' => 'nullable|string|max:100',
+            // Cliente
+            'client_id'          => 'nullable|exists:clients,id',
+            'client_first_name'  => 'required_without:client_id|string|max:100',
+            'client_last_name'   => 'required_without:client_id|string|max:100',
+            'client_phone'       => 'required_without:client_id|string|max:20',
+            'client_email'       => 'nullable|email|max:255',
+            'client_address'     => 'nullable|string|max:255',
+            'client_department'  => 'nullable|string',
+            'client_city'        => 'nullable|string',
             // Orden
-            'product_id' => 'required|exists:products,id',
-            'color' => 'required|string|max:100',
-            'sticker' => 'boolean',
-            'sticker_color' => 'nullable|string|max:100',
-            'observations' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'due_date' => 'required|date',
-            // Pago inicial
-            'advance_payment' => 'nullable|numeric|min:0',
+            'product_id'         => 'required|exists:products,id',
+            'color'              => 'required|string|max:100',
+            'sticker'            => 'boolean',
+            'sticker_color'      => 'nullable|string|max:100',
+            'observations'       => 'nullable|string',
+            'price'              => 'required|numeric|min:0',
+            'due_date'           => 'required|date',
+            'advance_payment'    => 'nullable|numeric|min:0',
         ]);
 
-        // Crear cliente si no existe
+        // Resolver cliente
         if ($request->filled('client_id')) {
             $clientId = $request->client_id;
         } else {
+            // Resolver department_id y city_id desde los nombres
+            $departmentId = null;
+            $cityId       = null;
+
+            if ($request->filled('client_department')) {
+                $dept = Department::find($request->client_department);
+                if ($dept) $departmentId = $dept->id;
+            }
+
+            if ($request->filled('client_city') && $departmentId) {
+                $city = City::where('department_id', $departmentId)
+                    ->where('name', $request->client_city)
+                    ->first();
+                if ($city) $cityId = $city->id;
+            }
+
             $client = Client::create([
-                'first_name' => $request->client_first_name,
-                'last_name' => $request->client_last_name,
-                'phone' => $request->client_phone,
-                'email' => $request->client_email,
-                'city' => $request->client_city,
-                'department' => $request->client_department,
-                'active' => true,
+                'first_name'    => $request->client_first_name,
+                'last_name'     => $request->client_last_name,
+                'phone'         => $request->client_phone,
+                'email'         => $request->client_email,
+                'address'       => $request->client_address,
+                'department_id' => $departmentId,
+                'city_id'       => $cityId,
+                'active'        => true,
             ]);
+
             $clientId = $client->id;
         }
 
         $dto = ProductionOrderDTO::fromRequest([
-            'client_id' => $clientId,
-            'product_id' => $request->product_id,
-            'color' => $request->color,
-            'sticker' => $request->boolean('sticker'),
-            'sticker_color' => $request->sticker_color,
-            'observations' => $request->observations,
-            'price' => $request->price,
+            'client_id'       => $clientId,
+            'product_id'      => $request->product_id,
+            'color'           => $request->color,
+            'sticker'         => $request->boolean('sticker'),
+            'sticker_color'   => $request->sticker_color,
+            'observations'    => $request->observations,
+            'price'           => $request->price,
             'advance_payment' => $request->advance_payment ?? 0,
-            'due_date' => $request->due_date,
+            'due_date'        => $request->due_date,
         ]);
 
         $order = $this->service->create($dto, auth()->id());
 
-        // Registrar anticipo si viene
+        // Registrar anticipo
         if ($request->filled('advance_payment') && $request->advance_payment > 0) {
-            \App\Models\Payment::create([
+            Payment::create([
                 'production_order_id' => $order->id,
-                'amount' => $request->advance_payment,
-                'type' => 'advance',
-                'notes' => 'Anticipo inicial',
-                'paid_at' => now()->toDateString(),
-                'registered_by' => auth()->id(),
+                'amount'              => $request->advance_payment,
+                'type'                => 'advance',
+                'payment_method'      => 'efectivo',
+                'notes'               => 'Anticipo inicial',
+                'paid_at'             => now()->toDateString(),
+                'registered_by'       => auth()->id(),
             ]);
         }
 
@@ -117,47 +135,52 @@ class ProductionOrderController extends Controller
 
     public function edit(ProductionOrder $productionOrder)
     {
-        $clients = Client::where('active', true)->orderBy('first_name')->get();
-        $products = Product::where('active', true)->orderBy('name')->get();
-        $departments = \App\Models\Department::orderBy('name')->get();
+        $products    = Product::where('active', true)->orderBy('name')->get();
+        $departments = Department::orderBy('name')->get();
 
         return view('orders.form', [
-            'order' => $productionOrder,
-            'clients' => $clients,
-            'products' => $products,
+            'order'       => $productionOrder,
+            'products'    => $products,
             'departments' => $departments,
         ]);
     }
 
     public function update(Request $request, ProductionOrder $productionOrder)
     {
-        $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'product_id' => 'required|exists:products,id',
-            'color' => 'required|string|max:100',
-            'sticker' => 'boolean',
-            'sticker_color' => 'nullable|string|max:100',
+        $request->validate([
+            'client_id'    => 'required|exists:clients,id',
+            'product_id'   => 'required|exists:products,id',
+            'color'        => 'required|string|max:100',
+            'sticker'      => 'boolean',
+            'sticker_color'=> 'nullable|string|max:100',
             'observations' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'advance_payment' => 'nullable|numeric|min:0',
-            'due_date' => 'required|date',
+            'price'        => 'required|numeric|min:0',
+            'due_date'     => 'required|date',
         ]);
-
-        $validated['sticker'] = $request->boolean('sticker');
 
         $this->service->update(
             $productionOrder,
-            ProductionOrderDTO::fromRequest($validated)
+            ProductionOrderDTO::fromRequest([
+                'client_id'       => $request->client_id,
+                'product_id'      => $request->product_id,
+                'color'           => $request->color,
+                'sticker'         => $request->boolean('sticker'),
+                'sticker_color'   => $request->sticker_color,
+                'observations'    => $request->observations,
+                'price'           => $request->price,
+                'advance_payment' => $request->advance_payment ?? 0,
+                'due_date'        => $request->due_date,
+            ])
         );
 
-        return redirect('/dashboard')->with('success', 'Orden actualizada.');
+        return redirect('/production-orders/'.$productionOrder->id)
+            ->with('success', 'Orden actualizada.');
     }
 
     public function destroy(ProductionOrder $productionOrder)
     {
         $productionOrder->delete();
-
-        return redirect('/dashboard')->with('success', 'Orden eliminada.');
+        return redirect('/orders')->with('success', 'Orden eliminada.');
     }
 
     public function advanceStage(Request $request, ProductionOrder $productionOrder)
@@ -182,7 +205,6 @@ class ProductionOrderController extends Controller
         }
 
         $this->service->cancel($productionOrder);
-
-        return redirect('/dashboard')->with('success', 'Orden cancelada.');
+        return redirect('/orders')->with('success', 'Orden cancelada.');
     }
 }
