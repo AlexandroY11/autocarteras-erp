@@ -13,6 +13,7 @@ use App\Http\Controllers\Web\ProfileController;
 use App\Http\Controllers\Web\StageController;
 use App\Http\Controllers\Web\SupplierController;
 use App\Http\Controllers\Web\WebauthnAuthController;
+use App\Models\Holiday;
 use Illuminate\Support\Facades\Route;
 use LaravelWebauthn\Facades\Webauthn;
 
@@ -98,5 +99,20 @@ Route::middleware('auth')->group(function () {
         Route::resource('/materials',          MaterialController::class);
         Route::resource('/material-purchases', MaterialPurchaseController::class)
             ->except(['edit', 'update', 'show']);
+    });
+
+    Route::get('/holidays/{year}', function($year) {
+        return response()->json(
+            Holiday::where('year', $year)
+                ->orderBy('date')
+                ->get(['date', 'name'])
+        );
+    });
+
+    Route::get('/holidays/check/{date}', function($date) {
+        return response()->json([
+            'is_holiday' => Holiday::isHoliday($date),
+            'date' => $date,
+        ]);
     });
 });
