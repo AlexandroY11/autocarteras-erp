@@ -54,13 +54,13 @@
             }, 
             
             selectProduct(id) { 
-                const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])->toJson() }}; 
-                const p = products.find(p => p.id == id); 
+                const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => parseFloat($p->base_price)])->toJson() }}; 
+                const p = products.find(product => product.id == id); 
                 if (p) { 
                     this.price = p.price;
                     this.updateDueDate();
                 }
-            }, 
+            },
             
             newClient() { 
                 this.clientMode = 'new';
@@ -90,16 +90,17 @@
             },
             
             updateDueDate() {
-                const today = new Date();
-                let currentDate = new Date(today);
+                let currentDate = new Date();
                 let businessDaysAdded = 0;
                 
+                // Avanzar día por día hasta encontrar 15 días hábiles
                 while (businessDaysAdded < 15) {
                     currentDate.setDate(currentDate.getDate() + 1);
                     
-                    const dayOfWeek = currentDate.getDay();
+                    const dayOfWeek = currentDate.getDay(); // 0 = domingo
                     const dateStr = currentDate.toISOString().split('T')[0];
                     
+                    // Verificar si es día hábil (no domingo y no festivo)
                     if (dayOfWeek !== 0 && !this.holidays.includes(dateStr)) {
                         businessDaysAdded++;
                     }
@@ -188,6 +189,12 @@
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div> 
+                    <label class="text-xs text-gray-500">Dirección *</label> 
+                    <input type="text" name="client_address" required
+                            placeholder="Calle 123 # 45-67"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div> 
                     <label class="text-xs text-gray-500">Departamento</label> 
                     <x-searchable-select
                         name="client_department" 
@@ -235,7 +242,7 @@
                         'label' => $p->name . ' — $' . number_format($p->base_price, 0, ',', '.'),
                     ],
                 )->toArray()"
-                @selected.window="selectProduct($event.detail.value)" />
+                @selected.window="(e) => { selectProduct(e.detail.value); }" />
         </div> 
         
         {{-- ── DETALLES ── --}}
@@ -310,19 +317,21 @@
                 <label class="text-xs text-gray-500">Precio total *</label> 
                 <input type="number" 
                     name="price"
-                    x-model="price" 
+                    x-model.number="price" 
                     required 
                     min="0" 
                     step="1000" 
                     placeholder="0"
                     class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <p class="text-xs text-gray-400 mt-1">Se llena automáticamente al seleccionar el producto.</p>
+                <p class="text-xs text-gray-400 mt-1">
+                    Se llena automáticamente con el precio de la cartera al seleccionar el producto. Puedes editarlo si vendes a otro precio.
+                </p>
             </div>
             <div> 
                 <label class="text-xs text-gray-500">Anticipo recibido</label> 
                 <input type="number"
                     name="advance_payment" 
-                    x-model="advance" 
+                    x-model.number="advance" 
                     min="0" 
                     step="1000"
                     class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -334,7 +343,7 @@
                     x-text="'$' + getBalance().toLocaleString('es-CO')">
                 </span> 
             </div>
-        </div> 
+        </div>
         
         <button type="submit"
             class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-xl text-base transition">
