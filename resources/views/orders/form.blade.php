@@ -21,6 +21,12 @@
             holidays: [],
             dueDate: '',
             
+            getCityOptions() {
+                return this.cities.map(function(c) {
+                    return { value: c.id.toString(), label: c.name };
+                });
+            },
+            
             async init() {
                 console.log('Formulario inicializado');
                 
@@ -29,7 +35,7 @@
                 try {
                     const res = await fetch('/api/holidays/' + year);
                     const data = await res.json();
-                    this.holidays = data.map(h => h.date);
+                    this.holidays = data.map(function(h) { return h.date; });
                     console.log('Festivos cargados:', this.holidays.length, 'festivos');
                 } catch (e) {
                     console.error('Error cargando festivos:', e);
@@ -60,9 +66,9 @@
             
             selectProduct(id) { 
                 console.log('Producto seleccionado ID:', id);
-                const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])->toJson() }}; 
+                var products = {!! json_encode($products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])) !!}; 
                 console.log('Productos disponibles:', products);
-                const p = products.find(p => p.id == id); 
+                var p = products.find(function(item) { return item.id == id; }); 
                 console.log('Producto encontrado:', p);
                 if (p) { 
                     this.price = p.price;
@@ -113,45 +119,45 @@
                 console.log('Hoy:', new Date().toISOString());
                 console.log('Festivos disponibles:', this.holidays.length);
                 
-                let currentDate = new Date();
-                let businessDaysAdded = 0;
+                var currentDate = new Date();
+                var businessDaysAdded = 0;
                 
                 while (businessDaysAdded < 15) {
                     currentDate.setDate(currentDate.getDate() + 1);
                     
-                    const dayOfWeek = currentDate.getDay();
-                    const dateStr = currentDate.toISOString().split('T')[0];
+                    var dayOfWeek = currentDate.getDay();
+                    var dateStr = currentDate.toISOString().split('T')[0];
                     
-                    const isSunday = dayOfWeek === 0;
-                    const isHoliday = this.holidays.includes(dateStr);
+                    var isSunday = dayOfWeek === 0;
+                    var isHoliday = this.holidays.includes(dateStr);
                     
-                    console.log('Día ' + (businessDaysAdded + 1) + ': ' + dateStr + ' (' + this.getDayName(dayOfWeek) + ') - Domingo: ' + isSunday + ', Festivo: ' + isHoliday);
+                    console.log('Dia ' + (businessDaysAdded + 1) + ': ' + dateStr + ' (' + this.getDayName(dayOfWeek) + ') - Domingo: ' + isSunday + ', Festivo: ' + isHoliday);
                     
                     if (!isSunday && !isHoliday) {
                         businessDaysAdded++;
-                        console.log('  Día hábil contado');
+                        console.log('  Dia habil contado');
                     } else {
-                        console.log('  No es día hábil');
+                        console.log('  No es dia habil');
                     }
                 }
                 
-                const year = currentDate.getFullYear();
-                const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                const day = String(currentDate.getDate()).padStart(2, '0');
+                var year = currentDate.getFullYear();
+                var month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                var day = String(currentDate.getDate()).padStart(2, '0');
                 this.dueDate = year + '-' + month + '-' + day;
                 
                 console.log('Fecha de compromiso calculada:', this.dueDate);
             },
             
             getDayName(day) {
-                const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                var days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
                 return days[day];
             },
             
             getBalance() {
-                const priceNum = parseFloat(this.price) || 0;
-                const advanceNum = parseFloat(this.advance) || 0;
-                const balance = Math.max(0, priceNum - advanceNum);
+                var priceNum = parseFloat(this.price) || 0;
+                var advanceNum = parseFloat(this.advance) || 0;
+                var balance = Math.max(0, priceNum - advanceNum);
                 console.log('Calculo de saldo:', priceNum, '-', advanceNum, '=', balance);
                 return balance;
             }
@@ -171,7 +177,7 @@
                 <div class="relative"> 
                     <input type="text" x-model="clientSearch"
                             @input.debounce.400ms="searchClients()" @click.outside="showDropdown = false"
-                            placeholder="Buscar por nombre o teléfono..."
+                            placeholder="Buscar por nombre o telefono..."
                             class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <div x-show="searching" class="absolute right-3 top-3 text-gray-400 text-xs"> Buscando... </div>
                     <div x-show="showDropdown && searchResults.length > 0"
@@ -221,12 +227,12 @@
                     </div>
                 </div>
                 <div> 
-                    <label class="text-xs text-gray-500">Teléfono / WhatsApp *</label> 
+                    <label class="text-xs text-gray-500">Telefono / WhatsApp *</label> 
                     <input type="text" name="client_phone"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div> 
-                    <label class="text-xs text-gray-500">Dirección</label> 
+                    <label class="text-xs text-gray-500">Direccion</label> 
                     <input type="text" name="client_address"
                             placeholder="Calle 123 # 45-67"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -254,7 +260,7 @@
                             <x-searchable-select 
                                 name="client_city"
                                 placeholder="Buscar ciudad..." 
-                                :options="cities.map(c => ({ value: c.id.toString(), label: c.name }))" /> 
+                                :options="getCityOptions()" /> 
                         </div>
                     </div>
                 </div>
@@ -302,10 +308,10 @@
                 <label class="flex items-center gap-2 cursor-pointer"> 
                     <input type="checkbox" name="sticker" value="1"
                         x-model="sticker" class="w-4 h-4 text-blue-600"> 
-                    <span class="text-sm text-gray-700">¿Lleva calcomanía?</span> 
+                    <span class="text-sm text-gray-700">¿Lleva calcomania?</span> 
                 </label>
                 <div x-show="sticker" x-transition> 
-                    <label class="text-xs text-gray-500">Color de calcomanía</label>
+                    <label class="text-xs text-gray-500">Color de calcomania</label>
                     <x-searchable-select name="sticker_color" 
                         placeholder="Seleccionar color..." :options="[
                             ['value' => 'Rojo', 'label' => 'Rojo'],
@@ -315,7 +321,7 @@
                             ['value' => 'Naranja', 'label' => 'Naranja'],
                             ['value' => 'Morado', 'label' => 'Morado'],
                             ['value' => 'Rosa', 'label' => 'Rosa'],
-                            ['value' => 'Café', 'label' => 'Café'],
+                            ['value' => 'Cafe', 'label' => 'Cafe'],
                             ['value' => 'Gris', 'label' => 'Gris'],
                             ['value' => 'Negro', 'label' => 'Negro'],
                             ['value' => 'Blanco', 'label' => 'Blanco'],
@@ -332,7 +338,7 @@
                     required 
                     x-model="dueDate"
                     class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <p class="text-xs text-gray-400 mt-1">Calculada automáticamente: 15 días hábiles (excluyendo domingos y festivos de Colombia)</p>
+                <p class="text-xs text-gray-400 mt-1">Calculada automaticamente: 15 dias habiles (excluyendo domingos y festivos de Colombia)</p>
             </div>
             <div> 
                 <label class="text-xs text-gray-500">Observaciones</label>
@@ -359,7 +365,7 @@
                     step="1000" 
                     placeholder="0"
                     class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <p class="text-xs text-gray-400 mt-1">Se llena automáticamente con el precio de la cartera al seleccionar el producto. Puedes editarlo si vendes a otro precio.</p>
+                <p class="text-xs text-gray-400 mt-1">Se llena automaticamente con el precio de la cartera al seleccionar el producto. Puedes editarlo si vendes a otro precio.</p>
             </div>
             <div> 
                 <label class="text-xs text-gray-500">Anticipo recibido</label> 
