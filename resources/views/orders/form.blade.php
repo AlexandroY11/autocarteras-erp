@@ -22,23 +22,20 @@
             dueDate: '',
             
             async init() {
-                console.log('🔧 Formulario inicializado');
+                console.log('Formulario inicializado');
                 
-                // Cargar festivos del año actual
                 const year = new Date().getFullYear();
-                console.log('📅 Cargando festivos para:', year);
+                console.log('Cargando festivos para:', year);
                 try {
-                    const res = await fetch(`/api/holidays/${year}`);
+                    const res = await fetch('/api/holidays/' + year);
                     const data = await res.json();
                     this.holidays = data.map(h => h.date);
-                    console.log('✅ Festivos cargados:', this.holidays.length, 'festivos');
-                    console.log('📋 Lista de festivos:', this.holidays);
+                    console.log('Festivos cargados:', this.holidays.length, 'festivos');
                 } catch (e) {
-                    console.error('❌ Error cargando festivos:', e);
+                    console.error('Error cargando festivos:', e);
                     this.holidays = [];
                 }
                 
-                // Calcular fecha inicial
                 this.updateDueDate();
             },
             
@@ -62,14 +59,14 @@
             }, 
             
             selectProduct(id) { 
-                console.log('🛒 Producto seleccionado ID:', id);
+                console.log('Producto seleccionado ID:', id);
                 const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])->toJson() }}; 
-                console.log('📦 Productos disponibles:', products);
+                console.log('Productos disponibles:', products);
                 const p = products.find(p => p.id == id); 
-                console.log('🔍 Producto encontrado:', p);
+                console.log('Producto encontrado:', p);
                 if (p) { 
                     this.price = p.price;
-                    console.log('💰 Precio establecido:', this.price);
+                    console.log('Precio establecido:', this.price);
                     this.updateDueDate();
                 }
             }, 
@@ -90,62 +87,60 @@
             }, 
             
             async loadCities(deptId) { 
-                console.log('🌍 Departamento seleccionado:', deptId);
+                console.log('Departamento seleccionado:', deptId);
                 this.departmentId = deptId; 
                 if (!deptId) { 
                     this.cities = []; 
-                    console.log('❌ No hay departamento, ciudades vacías');
+                    console.log('No hay departamento, ciudades vacías');
                     return; 
                 }
                 this.loadingCities = true; 
-                console.log('⏳ Cargando ciudades...');
+                console.log('Cargando ciudades...');
                 try {
                     const res = await fetch('/api/cities/' + deptId);
                     this.cities = await res.json();
-                    console.log('✅ Ciudades cargadas:', this.cities.length, 'ciudades');
-                    console.log('📋 Lista de ciudades:', this.cities);
+                    console.log('Ciudades cargadas:', this.cities.length, 'ciudades');
+                    console.log('Lista de ciudades:', this.cities);
                 } catch (e) {
-                    console.error('❌ Error cargando ciudades:', e);
+                    console.error('Error cargando ciudades:', e);
                     this.cities = [];
                 }
                 this.loadingCities = false; 
             },
             
             updateDueDate() {
-                console.log('📅 Calculando fecha de compromiso...');
-                console.log('📅 Hoy:', new Date().toISOString());
-                console.log('🎄 Festivos disponibles:', this.holidays.length);
+                console.log('Calculando fecha de compromiso...');
+                console.log('Hoy:', new Date().toISOString());
+                console.log('Festivos disponibles:', this.holidays.length);
                 
                 let currentDate = new Date();
                 let businessDaysAdded = 0;
                 
-                // Avanzar día por día hasta encontrar 15 días hábiles
                 while (businessDaysAdded < 15) {
                     currentDate.setDate(currentDate.getDate() + 1);
                     
-                    const dayOfWeek = currentDate.getDay(); // 0 = domingo, 6 = sábado
+                    const dayOfWeek = currentDate.getDay();
                     const dateStr = currentDate.toISOString().split('T')[0];
                     
                     const isSunday = dayOfWeek === 0;
                     const isHoliday = this.holidays.includes(dateStr);
                     
-                    console.log(`📅 Día ${businessDaysAdded + 1}: ${dateStr} (${this.getDayName(dayOfWeek)}) - Domingo: ${isSunday}, Festivo: ${isHoliday}`);
+                    console.log('Día ' + (businessDaysAdded + 1) + ': ' + dateStr + ' (' + this.getDayName(dayOfWeek) + ') - Domingo: ' + isSunday + ', Festivo: ' + isHoliday);
                     
-                    // No contar domingos (0) ni festivos
                     if (!isSunday && !isHoliday) {
                         businessDaysAdded++;
-                        console.log('   ✅ Día hábil contado');
+                        console.log('  Día hábil contado');
                     } else {
-                        console.log('   ❌ No es día hábil');
+                        console.log('  No es día hábil');
                     }
                 }
                 
                 const year = currentDate.getFullYear();
                 const month = String(currentDate.getMonth() + 1).padStart(2, '0');
                 const day = String(currentDate.getDate()).padStart(2, '0');
-                this.dueDate = `${year}-${month}-${day}`;
+                this.dueDate = year + '-' + month + '-' + day;
                 
-                console.log('✅ Fecha de compromiso calculada:', this.dueDate);
+                console.log('Fecha de compromiso calculada:', this.dueDate);
             },
             
             getDayName(day) {
@@ -157,7 +152,7 @@
                 const priceNum = parseFloat(this.price) || 0;
                 const advanceNum = parseFloat(this.advance) || 0;
                 const balance = Math.max(0, priceNum - advanceNum);
-                console.log('💰 Cálculo de saldo:', priceNum, '-', advanceNum, '=', balance);
+                console.log('Calculo de saldo:', priceNum, '-', advanceNum, '=', balance);
                 return balance;
             }
         }">
@@ -242,7 +237,7 @@
                         name="client_department" 
                         placeholder="Seleccionar departamento..." 
                         :options="$departments->map(fn($d) => ['value' => (string) $d->id, 'label' => $d->name])->toArray()"
-                        @selected.window="(e) => { console.log('Event detail:', e.detail); loadCities(e.detail.value); }" /> 
+                        x-on:selected.window="loadCities($event.detail.value)" /> 
                 </div>
                 <div> 
                     <label class="text-xs text-gray-500">Ciudad</label> 
@@ -283,7 +278,7 @@
                         'label' => $p->name . ' — $' . number_format($p->base_price, 0, ',', '.'),
                     ],
                 )->toArray()"
-                @selected.window="(e) => { console.log('Producto seleccionado:', e.detail); selectProduct(e.detail.value); }" />
+                x-on:selected.window="selectProduct($event.detail.value)" />
         </div> 
         
         {{-- ── DETALLES ── --}}
