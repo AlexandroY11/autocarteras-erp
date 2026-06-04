@@ -31,7 +31,6 @@
                         return dateStr.substring(0, 10);
                     });
                     
-                    console.log('Festivos procesados correctamente:', this.holidays);
                 } catch (e) {
                     console.error('Error cargando festivos:', e);
                     this.holidays = [];

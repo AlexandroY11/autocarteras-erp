@@ -13,9 +13,7 @@ use App\Http\Controllers\Web\ProfileController;
 use App\Http\Controllers\Web\StageController;
 use App\Http\Controllers\Web\SupplierController;
 use App\Http\Controllers\Web\WebauthnAuthController;
-use App\Models\Holiday;
 use Illuminate\Support\Facades\Route;
-use LaravelWebauthn\Facades\Webauthn;
 
 // Raíz
 Route::get('/', function () {
@@ -23,9 +21,9 @@ Route::get('/', function () {
 });
 
 // Auth — sin middleware
-Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::post('/webauthn/auth/options',
     [LaravelWebauthn\Http\Controllers\AuthenticateController::class, 'create']
@@ -35,13 +33,12 @@ Route::post('/webauthn/auth', [WebauthnAuthController::class, 'login'])
     ->name('webauthn.auth');
 
 Route::middleware('auth')->group(function () {
-
     Route::get('/profile', [ProfileController::class, 'index'])
         ->name('profile');
 
     // ── Rutas compartidas (admin + operativos) ──────────────────
     Route::get('/dashboard', [DashboardController::class, 'index']);
-    Route::get('/orders',    [OrderController::class, 'index']);
+    Route::get('/orders', [OrderController::class, 'index']);
 
     // Ver detalle de orden — whereNumber evita capturar /create
     Route::get('/production-orders/{production_order}',
@@ -54,8 +51,7 @@ Route::middleware('auth')->group(function () {
 
     // API interna
     Route::get('/api/cities/{department}', function ($departmentId) {
-        return cache()->remember("cities_{$departmentId}", 3600, fn() =>
-            App\Models\City::where('department_id', $departmentId)
+        return cache()->remember("cities_{$departmentId}", 3600, fn () => App\Models\City::where('department_id', $departmentId)
                 ->orderBy('name')->get(['id', 'name'])
         );
     });
@@ -64,7 +60,6 @@ Route::middleware('auth')->group(function () {
 
     // ── Solo admin ───────────────────────────────────────────────
     Route::middleware('admin')->group(function () {
-
         // Órdenes de producción — create debe ir antes de {id}
         Route::get('/production-orders',
             [ProductionOrderController::class, 'index']);
@@ -85,18 +80,18 @@ Route::middleware('auth')->group(function () {
             [ProductionOrderController::class, 'cancel']);
 
         // Pagos
-        Route::post('/payments',             [PaymentController::class, 'store']);
+        Route::post('/payments', [PaymentController::class, 'store']);
         Route::delete('/payments/{payment}', [PaymentController::class, 'destroy']);
 
         // CRUDs
-        Route::resource('/products',  ProductController::class);
-        Route::resource('/clients',   ClientController::class);
-        Route::resource('/stages',    StageController::class);
-        Route::resource('/users',     App\Http\Controllers\Web\UserController::class);
+        Route::resource('/products', ProductController::class);
+        Route::resource('/clients', ClientController::class);
+        Route::resource('/stages', StageController::class);
+        Route::resource('/users', App\Http\Controllers\Web\UserController::class);
 
         // Materiales y proveedores
-        Route::resource('/suppliers',          SupplierController::class);
-        Route::resource('/materials',          MaterialController::class);
+        Route::resource('/suppliers', SupplierController::class);
+        Route::resource('/materials', MaterialController::class);
         Route::resource('/material-purchases', MaterialPurchaseController::class)
             ->except(['edit', 'update', 'show']);
     });

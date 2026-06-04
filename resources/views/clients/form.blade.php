@@ -11,31 +11,59 @@
         </h1>
     </div>
 
-    <form method="POST"
-        action="{{ $client->exists ? '/clients/'.$client->id : '/clients' }}"
-        class="space-y-4"
-        x-data="{
-            departmentId: '{{ old('department_id', $client->department_id ?? '') }}',
-            cityId: '{{ old('city_id', $client->city_id ?? '') }}',
-            cities: [],
-            loadingCities: false,
+    <form method="POST" action="{{ $client->exists ? route('clients.update', $client) : route('clients.store') }}" class="space-y-4" x-data="{
+        departmentId: '{{ old('department_id', $client->department_id ?? '') }}',
+        cityId: '{{ old('city_id', $client->city_id ?? '') }}',
+        loadingCities: false,
 
-            async loadCities(deptId, preselectId) {
-                if (!deptId) { this.cities = []; return; }
-                this.loadingCities = true;
-                const res = await fetch('/api/cities/' + deptId);
-                this.cities = await res.json();
-                this.loadingCities = false;
-                if (preselectId) this.cityId = String(preselectId);
-            },
+        async loadCities(deptId) {
+            // Primero deshabilita y limpia ciudades
+            window.dispatchEvent(new CustomEvent('searchable-options-city', {
+                detail: { options: [], disabled: true, selected: '' }
+            }));
 
-            async init() {
-                if (this.departmentId) {
-                    await this.loadCities(this.departmentId, this.cityId);
+            if (!deptId) return;
+            this.loadingCities = true;
+
+            const res = await fetch('/api/cities/' + deptId);
+            const data = await res.json();
+
+            const options = data.map(c => ({ value: String(c.id), label: c.name }));
+
+            window.dispatchEvent(new CustomEvent('searchable-options-city', {
+                detail: {
+                    options,
+                    disabled: false,
+                    selected: this.cityId  // preselecciona si venía de edición
                 }
+            }));
+
+            this.loadingCities = false;
+        },
+
+        async init() {
+            if (this.departmentId) {
+                await this.loadCities(this.departmentId);
             }
-        }"
-        x-init="init()">
+        },
+        submit(e) {
+            if (!this.departmentId) {
+                e.preventDefault();
+                showAlert.error('Debes seleccionar un departamento antes de continuar', 'Campo requerido');
+                return;
+            }
+            
+            if (!this.cityId) {
+                e.preventDefault();
+                showAlert.error('Debes seleccionar una ciudad para el envío', 'Campo requerido');
+                return;
+            }
+
+            // Opcional: Si quieres pedir confirmación final antes de que se envíe realmente
+            showAlert.confirm(e, '¿Estás seguro de guardar los datos de este cliente?');
+        }
+
+    }" @submit="submit($event)">
         @csrf
         @if($client->exists) @method('PUT') @endif
 
@@ -80,43 +108,31 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Dirección</label>
                 <input type="text" name="address"
-                    value="{{ old('address', $client->address) }}"
+                    value="{{ old('address', $client->address) }}" required 
                     placeholder="Ej: Cra 5 # 12-34"
                     class="input-field">
             </div>
 
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Departamento</label>
-                <select name="department_id"
-                    x-model="departmentId"
-                    @change="loadCities($event.target.value, null); cityId = ''"
-                    class="input-field">
-                    <option value="">Seleccionar departamento...</option>
-                    @foreach($departments as $dept)
-                    <option value="{{ $dept->id }}"
-                        {{ old('department_id', $client->department_id) == $dept->id ? 'selected' : '' }}>
-                        {{ $dept->name }}
-                    </option>
-                    @endforeach
-                </select>
+            {{-- Departamento --}}
+            <div @@selected="departmentId = $event.detail.value; cityId = ''; loadCities($event.detail.value)">
+                <x-searchable-select
+                    name="department_id"
+                    placeholder="Seleccionar departamento..."
+                    :selected="old('department_id', $client->department_id ?? '')"
+                    :options="$departments->map(fn($d) => ['value' => (string)$d->id, 'label' => $d->name])->values()->toArray()"
+                />
             </div>
 
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Ciudad</label>
-                <select name="city_id"
-                    x-model="cityId"
-                    :disabled="!departmentId || loadingCities"
-                    class="input-field disabled:bg-gray-100 disabled:text-gray-400">
-                    <option value="">
-                        <span x-text="loadingCities ? 'Cargando...' : (departmentId ? 'Seleccionar ciudad...' : 'Primero selecciona departamento')"></span>
-                    </option>
-                    <template x-for="city in cities" :key="city.id">
-                        <option :value="String(city.id)"
-                            :selected="String(city.id) === String(cityId)"
-                            x-text="city.name">
-                        </option>
-                    </template>
-                </select>
+            {{-- Ciudad --}}
+            <div @@selected="cityId = $event.detail.value">
+                <x-searchable-select
+                    name="city_id"
+                    placeholder="Seleccionar ciudad..."
+                    :selected="old('city_id', $client->city_id ?? '')"
+                    :options="[]"
+                    :disabled="true"
+                    listen-key="city"
+                />
             </div>
         </div>
 

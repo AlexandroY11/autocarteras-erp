@@ -84,7 +84,7 @@
 
                                     <button
                                         type="button"
-                                        onclick="confirmDelete(
+                                        onclick="showAlert.delete(
                                             'delete-key-{{ $key->id }}',
                                             'Se eliminará la llave de acceso {{ $key->name }}'
                                         )"

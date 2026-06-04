@@ -202,6 +202,13 @@
 
                 {{-- C. ACCIONES: (Al final y alineadas a la derecha) --}}
                 <div class="mt-6 pt-4 border-t border-gray-50 flex justify-end gap-3">
+                    <a href="https://wa.me/57{{ preg_replace('/[^0-9]/', '', $client->phone) }}?text={{ urlencode('Hola ' . $client->first_name . ', somos AutoCarteras Cali') }}" 
+                        target="_blank" 
+                        class="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white rounded-2xl transition-all font-bold text-xs mr-auto">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.236 3.484 8.417 0 6.556-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.652zm5.814-3.533c1.558.924 3.55 1.488 5.651 1.489 5.701 0 10.339-4.638 10.339-10.339 0-5.701-4.638-10.339-10.339-10.339-2.762 0-5.359 1.076-7.312 3.028a10.286 10.286 0 00-3.027 7.311c-.001 2.155.593 4.148 1.582 5.762l-1.035 3.784 3.882-1.017-.04.022zM17.158 14.18c-.282-.141-1.67-.824-1.928-.918-.259-.094-.447-.141-.635.141-.188.282-.729.918-.894 1.106-.165.188-.329.212-.612.071-.282-.141-1.191-.439-2.27-1.402-.84-.749-1.407-1.673-1.572-1.955-.165-.282-.018-.434.123-.574.127-.127.282-.329.424-.494.141-.165.188-.282.282-.471.094-.188.047-.353-.024-.494-.071-.141-.635-1.53-.871-2.094-.229-.553-.46-.477-.635-.486l-.541-.01c-.188 0-.494.071-.753.353-.259.282-.988.965-.988 2.353 0 1.388 1.012 2.729 1.153 2.918.141.188 1.991 3.041 4.824 4.261.673.29 1.2.463 1.609.593.676.215 1.291.184 1.777.111.542-.081 1.67-.682 1.905-1.341.235-.659.235-1.224.165-1.341-.07-.116-.259-.188-.541-.329z"/>
+                        </svg>
+                    </a>
                     <a href="/clients/{{ $client->id }}/edit" class="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all font-bold text-xs">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
@@ -211,7 +218,7 @@
                     <form id="delete-form-{{ $client->id }}" method="POST" action="/clients/{{ $client->id }}">
                         @csrf @method('DELETE')
                         <button type="button" 
-                            @click="confirmDelete('delete-form-{{ $client->id }}', 'El cliente {{ $client->full_name }} será eliminado.')"
+                            @click="showAlert.delete('delete-form-{{ $client->id }}', 'El cliente {{ $client->full_name }} será eliminado.')"
                             class="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all font-bold text-xs">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />

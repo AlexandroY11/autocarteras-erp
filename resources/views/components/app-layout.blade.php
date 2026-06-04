@@ -173,61 +173,21 @@
 
 
     <script>
-        // Desregistrar cualquier service worker existente
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(regs => {
-                regs.forEach(reg => reg.unregister());
-            });
-            // Limpiar todo el caché
-            if ('caches' in window) {
-                caches.keys().then(keys => {
-                    keys.forEach(key => caches.delete(key));
-                });
-            }
-        }
+    // Limpieza de Service Workers
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(reg => reg.unregister()));
+    }
 
-        window.confirmDelete = function(formId, message = '¿Estás seguro de eliminar este registro?') {
-            Swal.fire({
-                title: '¿Confirmar eliminación?',
-                text: message,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#1d4ed8', // Tu azul de Tailwind (blue-700)
-                cancelButtonColor: '#ef4444',  // Tu rojo de Tailwind (red-500)
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar',
-                reverseButtons: true,
-                borderRadius: '1.5rem', // Para que combine con tus cards redondeadas
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById(formId).submit();
-                }
-            })
-        }
+    // Escuchar mensajes de sesión de Laravel
+    document.addEventListener('DOMContentLoaded', () => {
+        @if(session('success'))
+            window.showAlert.success("{{ session('success') }}");
+        @endif
 
-        window.confirmAction = function(event, message = 'Are you sure?') {
-            event.preventDefault(); 
-            const form = event.target;
-
-            Swal.fire({
-                title: message,
-                text: "No podrás deshacer esta acción",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sí, continuar',
-                cancelButtonText: 'Cancelar',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        }
-
-                
-
-    </script>
+        @if(session('error'))
+            window.showAlert.error("{{ session('error') }}");
+        @endif
+    });
+</script>
 </body>
 </html>

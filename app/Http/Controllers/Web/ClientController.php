@@ -15,19 +15,15 @@ class ClientController extends Controller
         $departments = Department::orderBy('name')->get();
 
         $clients = Client::with(['department', 'city'])
-            ->when(request('search'), fn($q, $s) =>
-                $q->where('first_name', 'ilike', "%{$s}%")
-                  ->orWhere('last_name',  'ilike', "%{$s}%")
-                  ->orWhere('phone',      'ilike', "%{$s}%")
+            ->when(request('search'), fn ($q, $s) => $q->where('first_name', 'ilike', "%{$s}%")
+                  ->orWhere('last_name', 'ilike', "%{$s}%")
+                  ->orWhere('phone', 'ilike', "%{$s}%")
             )
-            ->when(request('department_id'), fn($q, $d) =>
-                $q->where('department_id', $d)
+            ->when(request('department_id'), fn ($q, $d) => $q->where('department_id', $d)
             )
-            ->when(request('city_id'), fn($q, $c) =>
-                $q->where('city_id', $c)
+            ->when(request('city_id'), fn ($q, $c) => $q->where('city_id', $c)
             )
-            ->when(request('active') !== null, fn($q) =>
-                $q->where('active', filter_var(request('active'), FILTER_VALIDATE_BOOLEAN))
+            ->when(request('active') !== null, fn ($q) => $q->where('active', filter_var(request('active'), FILTER_VALIDATE_BOOLEAN))
             )
             ->orderBy('first_name')
             ->paginate(20)
@@ -56,19 +52,24 @@ class ClientController extends Controller
     public function create()
     {
         $departments = Department::orderBy('name')->get();
-        return view('clients.form', ['client' => new Client, 'departments' => $departments]);
+
+        return view('clients.form', ['client' => new Client(), 'departments' => $departments]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'first_name'    => 'required|string|max:100',
-            'last_name'     => 'required|string|max:100',
-            'phone'         => 'required|string|max:20',
-            'email'         => 'nullable|email|max:255',
-            'address'       => 'nullable|string|max:255',
-            'department_id' => 'nullable|exists:departments,id',
-            'city_id'       => 'nullable|exists:cities,id',
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'phone' => 'required|string|max:20|unique:clients,phone',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'department_id' => 'required|exists:departments,id',
+            'city_id' => 'required|exists:cities,id',
+        ], [
+            'phone.unique' => 'Este número de teléfono ya está registrado con otro cliente.',
+            'department_id.required' => 'Debes seleccionar un departamento.',
+            'city_id.required' => 'Debes seleccionar una ciudad.',
         ]);
 
         Client::create($request->only(
@@ -82,25 +83,29 @@ class ClientController extends Controller
     public function edit(Client $client)
     {
         $departments = Department::orderBy('name')->get();
+
         return view('clients.form', compact('client', 'departments'));
     }
 
     public function update(Request $request, Client $client)
     {
         $request->validate([
-            'first_name'    => 'required|string|max:100',
-            'last_name'     => 'required|string|max:100',
-            'phone'         => 'required|string|max:20',
-            'email'         => 'nullable|email|max:255',
-            'address'       => 'nullable|string|max:255',
-            'department_id' => 'nullable|exists:departments,id',
-            'city_id'       => 'nullable|exists:cities,id',
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'phone' => 'required|string|max:20|unique:clients,phone,'.$client->id,
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'department_id' => 'required|exists:departments,id',
+            'city_id' => 'required|exists:cities,id',
+        ], [
+            'phone.unique' => 'Este número ya pertenece a otro cliente registrado.',
         ]);
 
+        // Aseguramos que 'active' se capture correctamente del checkbox
         $client->update($request->only(
             'first_name', 'last_name', 'phone', 'email',
-            'address', 'department_id', 'city_id', 'active'
-        ));
+            'address', 'department_id', 'city_id'
+        ) + ['active' => $request->boolean('active')]);
 
         return redirect('/clients')->with('success', 'Cliente actualizado.');
     }
@@ -108,6 +113,7 @@ class ClientController extends Controller
     public function destroy(Client $client)
     {
         $client->delete();
+
         return redirect('/clients')->with('success', 'Cliente eliminado.');
     }
 
@@ -138,11 +144,11 @@ class ClientController extends Controller
 
         return response()->json(
             $clients->map(fn ($c) => [
-                'id'         => $c->id,
-                'name'       => $c->full_name,
-                'phone'      => $c->phone,
-                'address'    => $c->address,
-                'city'       => $c->city?->name ?? '',
+                'id' => $c->id,
+                'name' => $c->full_name,
+                'phone' => $c->phone,
+                'address' => $c->address,
+                'city' => $c->city?->name ?? '',
                 'department' => $c->department?->name ?? '',
             ])
         );

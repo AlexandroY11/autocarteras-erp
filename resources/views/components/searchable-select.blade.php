@@ -4,6 +4,7 @@
     'placeholder' => 'Buscar...',
     'selected' => '',
     'disabled' => false,
+    'listenKey' => null,  // ← clave única para escuchar eventos externos
 ])
 
 <div x-data="{
@@ -12,6 +13,7 @@
     selected: '{{ $selected }}',
     selectedLabel: '',
     options: {{ json_encode($options) }},
+    disabled: {{ $disabled ? 'true' : 'false' }},
 
     get filtered() {
         if (!this.search) return this.options;
@@ -29,27 +31,32 @@
 
     init() {
         this.updateLabel();
-        // Esto hace que si las opciones cambian externamente, el componente se actualice
         this.$watch('options', () => this.updateLabel());
+
+        @if($listenKey)
+        // Escucha actualizaciones externas de opciones
+        window.addEventListener('searchable-options-{{ $listenKey }}', (e) => {
+            this.options = e.detail.options ?? [];
+            this.disabled = e.detail.disabled ?? false;
+            this.selected = e.detail.selected ?? '';
+            this.updateLabel();
+        });
+        @endif
     },
 
     updateLabel() {
         const found = this.options.find(o => o.value == this.selected);
-        if (found) {
-            this.selectedLabel = found.label;
-        } else {
-            this.selectedLabel = '';
-            this.selected = '';
-        }
+        this.selectedLabel = found ? found.label : '';
+        if (!found) this.selected = '';
     }
-}"  class="relative" @click.outside="open = false">
+}" class="relative" @click.outside="open = false">
 
     <input type="hidden" name="{{ $name }}" :value="selected">
 
     <button type="button"
-        @click="open = !open"
-        :disabled="{{ $disabled ? 'true' : 'false' }}"
-        class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-left focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 flex justify-between items-center">
+        @click="if(!disabled) open = !open"
+        :disabled="disabled"
+        class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-left focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed flex justify-between items-center">
         <span :class="selectedLabel ? 'text-gray-800' : 'text-gray-400'"
             x-text="selectedLabel || '{{ $placeholder }}'"></span>
         <span class="text-gray-400">▾</span>
