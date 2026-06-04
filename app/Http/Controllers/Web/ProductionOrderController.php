@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Models\City;
 use App\Models\Client;
 use App\Models\Department;
 use App\Models\Payment;
@@ -41,13 +40,15 @@ class ProductionOrderController extends Controller
         $request->validate([
             // Cliente
             'client_id' => 'nullable|exists:clients,id',
-            'client_first_name' => 'required_without:client_id|string|max:100',
-            'client_last_name' => 'required_without:client_id|string|max:100',
-            'client_phone' => 'required_without:client_id|string|max:20',
+            // Añadimos 'nullable' para que 'string' no falle si el campo llega vacío
+            'client_first_name' => 'required_without:client_id|nullable|string|max:100',
+            'client_last_name' => 'required_without:client_id|nullable|string|max:100',
+            'client_phone' => 'required_without:client_id|nullable|string|max:20',
             'client_email' => 'nullable|email|max:255',
             'client_address' => 'nullable|string|max:255',
-            'client_department' => 'nullable',
-            'client_city' => 'nullable',
+            'client_department' => 'nullable|exists:departments,id',
+            'client_city' => 'nullable|exists:cities,id',
+
             // Orden
             'product_id' => 'required|exists:products,id',
             'color' => 'required|string|max:100',
@@ -59,28 +60,15 @@ class ProductionOrderController extends Controller
             'advance_payment' => 'nullable|numeric|min:0',
         ]);
 
-        // Resolver cliente
         if ($request->filled('client_id')) {
             $clientId = $request->client_id;
         } else {
-            // Resolver department_id y city_id desde los nombres
-            $departmentId = null;
-            $cityId = null;
+            $existingClient = Client::where('phone', $request->client_phone)->first();
 
-            if ($request->filled('client_department')) {
-                $dept = Department::find($request->client_department);
-                if ($dept) {
-                    $departmentId = $dept->id;
-                }
-            }
-
-            if ($request->filled('client_city') && $departmentId) {
-                $city = City::where('department_id', $departmentId)
-                    ->where('name', $request->client_city)
-                    ->first();
-                if ($city) {
-                    $cityId = $city->id;
-                }
+            if ($existingClient) {
+                return back()->withInput()->withErrors([
+                    'client_phone' => "El teléfono ya pertenece a: {$existingClient->first_name} {$existingClient->last_name}. Búscalo en el selector de arriba.",
+                ]);
             }
 
             $client = Client::create([
@@ -89,14 +77,14 @@ class ProductionOrderController extends Controller
                 'phone' => $request->client_phone,
                 'email' => $request->client_email,
                 'address' => $request->client_address,
-                'department_id' => $departmentId,
-                'city_id' => $cityId,
+                'department_id' => $request->client_department,
+                'city_id' => $request->client_city,
                 'active' => true,
             ]);
-
             $clientId = $client->id;
         }
 
+        // CREAR DTO Y ORDEN
         $dto = ProductionOrderDTO::fromRequest([
             'client_id' => $clientId,
             'product_id' => $request->product_id,
@@ -111,7 +99,7 @@ class ProductionOrderController extends Controller
 
         $order = $this->service->create($dto, auth()->id());
 
-        // Registrar anticipo
+        // REGISTRAR ANTICIPO (Si aplica)
         if ($request->filled('advance_payment') && $request->advance_payment > 0) {
             Payment::create([
                 'production_order_id' => $order->id,
@@ -161,6 +149,7 @@ class ProductionOrderController extends Controller
             'sticker_color' => 'nullable|string|max:100',
             'observations' => 'nullable|string',
             'price' => 'required|numeric|min:0',
+            'advance_payment' => 'nullable|numeric|min:0',
             'due_date' => 'required|date',
         ]);
 

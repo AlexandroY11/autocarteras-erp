@@ -76,13 +76,19 @@
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre *</label>
                     <input type="text" name="first_name"
                         value="{{ old('first_name', $client->first_name) }}" required
-                        class="input-field">
+                        class="input-field @error('first_name') border-red-500 @enderror">
+                    @error('first_name')
+                        <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Apellido *</label>
                     <input type="text" name="last_name"
                         value="{{ old('last_name', $client->last_name) }}" required
-                        class="input-field">
+                        class="input-field @error('last_name') border-red-500 @enderror">
+                    @error('last_name')
+                        <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
@@ -90,14 +96,20 @@
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Teléfono / WhatsApp *</label>
                 <input type="text" name="phone"
                     value="{{ old('phone', $client->phone) }}" required
-                    class="input-field">
+                    class="input-field @error('phone') border-red-500 @enderror">
+                @error('phone')
+                    <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Correo</label>
                 <input type="email" name="email"
                     value="{{ old('email', $client->email) }}"
-                    class="input-field">
+                    class="input-field @error('email') border-red-500 @enderror">
+                @error('email')
+                    <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p>
+                @enderror
             </div>
         </div>
 
@@ -110,7 +122,10 @@
                 <input type="text" name="address"
                     value="{{ old('address', $client->address) }}" required 
                     placeholder="Ej: Cra 5 # 12-34"
-                    class="input-field">
+                    class="input-field @error('address') border-red-500 @enderror">
+                @error('address')
+                    <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             {{-- Departamento --}}
@@ -121,6 +136,9 @@
                     :selected="old('department_id', $client->department_id ?? '')"
                     :options="$departments->map(fn($d) => ['value' => (string)$d->id, 'label' => $d->name])->values()->toArray()"
                 />
+                @error('department_id')
+                    <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             {{-- Ciudad --}}
@@ -133,6 +151,9 @@
                     :disabled="true"
                     listen-key="city"
                 />
+                @error('city_id')
+                    <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p>
+                @enderror
             </div>
         </div>
 
