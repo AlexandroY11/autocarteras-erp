@@ -6,7 +6,7 @@
     <div class="flex justify-between items-start">
 
         <div class="space-y-1">
-            <a href="/dashboard" class="text-sm text-gray-500 hover:text-blue-600">
+            <a href="/orders" class="text-sm text-gray-500 hover:text-blue-600">
                 ← Volver
             </a>
 

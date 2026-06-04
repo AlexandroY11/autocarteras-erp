@@ -1,6 +1,6 @@
 <x-app-layout title="Nueva Orden">
     <div class="mt-4 mb-4 flex items-center gap-3"> 
-        <a href="/dashboard" class="text-gray-500">← Volver</a>
+        <a href="/orders" class="text-gray-500">← Volver</a>
         <h1 class="text-lg font-bold text-gray-800">Nueva Orden</h1>
     </div>
     

@@ -68,107 +68,128 @@
 
         @forelse($orders as $order)
         <a href="/production-orders/{{ $order->id }}"
-           class="block bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+        class="block bg-white rounded-2xl border border-gray-100 hover:border-gray-200 transition-all overflow-hidden">
 
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {{-- FILA SUPERIOR --}}
+            <div class="flex items-stretch border-b border-gray-100">
 
-                {{-- LEFT --}}
-                <div class="flex items-center gap-5 flex-1 min-w-0">
+                {{-- NÚMERO DE ORDEN --}}
+                <div class="flex flex-col items-center justify-center px-5 py-4 bg-gray-50 border-r border-gray-100 min-w-[88px]">
+                    <span class="text-[11px] text-gray-400 uppercase tracking-widest">Ord.</span>
+                    <span class="text-2xl font-medium text-gray-900 leading-tight">
+                        #{{ str_pad($order->consecutive, 3, '0', STR_PAD_LEFT) }}
+                    </span>
+                </div>
 
-                    {{-- ICON --}}
-                    <div class="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100">
-
-                        <svg class="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z"/>
+                {{-- PRODUCTO Y CLIENTE --}}
+                <div class="flex flex-col justify-center px-5 py-4 flex-1 gap-0.5">
+                    <p class="text-lg font-medium text-gray-900">{{ $order->product->name }}</p>
+                    <p class="text-sm text-gray-400 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                         </svg>
-
-                    </div>
-
-                    {{-- INFO --}}
-                    <div class="min-w-0">
-
-                        <div class="flex items-center gap-2">
-
-                            <p class="text-xs font-bold text-gray-400">
-                                #{{ str_pad($order->consecutive, 3, '0', STR_PAD_LEFT) }}
-                            </p>
-
-                            @if($order->currentStage)
-                                <span class="text-xs font-bold text-white px-2 py-0.5 rounded-full"
-                                      style="background: {{ $order->currentStage->color }}">
-                                    {{ $order->currentStage->name }}
-                                </span>
-                            @else
-                                <span class="text-xs font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                    Sin etapa
-                                </span>
-                            @endif
-
-                        </div>
-
-                        <h3 class="font-bold text-gray-900 text-lg truncate">
-                            {{ $order->client->full_name }}
-                        </h3>
-
-                        <p class="text-sm text-gray-500 truncate">
-                            {{ $order->product->name }}
-                        </p>
-
-                        {{-- DETAILS --}}
-                        <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
-
-                            <span class="flex items-center gap-1">
-                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                          d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
-                                </svg>
-                                {{ $order->color }}
-                            </span>
-
-                            <span class="flex items-center gap-1">
-                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                          d="M20 12H4"/>
-                                </svg>
-                                {{ $order->product->pieces ?? 0 }} piezas
-                            </span>
-
-                            @if($order->due_date)
-                                <span class="flex items-center gap-1 {{ $order->due_date->isPast() ? 'text-red-500 font-semibold' : '' }}">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                              d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                    </svg>
-                                    {{ $order->due_date->format('d/m') }}
-                                </span>
-                            @endif
-
-                        </div>
-
-                    </div>
+                        {{ $order->client->full_name }}
+                        <span class="text-gray-300">·</span>
+                        {{ $order->client->phone }}
+                    </p>
+                    <p class="text-xs text-gray-300 flex items-center gap-1.5 ml-0.5">
+                        <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                        </svg>
+                        {{ $order->client->address }}, {{ $order->client->city->name }}, {{ $order->client->department->name }}
+                    </p>
                 </div>
 
-                {{-- RIGHT --}}
-                <div class="text-right shrink-0">
+                {{-- ETAPA --}}
+                <div class="flex items-center gap-2.5 px-5 py-4 border-l border-gray-100">
+                    @if($order->currentStage)
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0"
+                            style="background: {{ $order->currentStage->color }}"></span>
+                        <span class="text-sm font-medium"
+                            style="color: {{ $order->currentStage->color }}">
+                            {{ $order->currentStage->name }}
+                        </span>
+                    @else
+                        <span class="w-2.5 h-2.5 rounded-full bg-gray-300 shrink-0"></span>
+                        <span class="text-sm font-medium text-gray-400">Sin etapa</span>
+                    @endif
+                </div>
 
-                    <p class="text-[10px] font-bold text-gray-400 uppercase">Total</p>
-                    <p class="text-xl font-black text-blue-700">
+            </div>
+
+            {{-- FILA INFERIOR --}}
+            <div class="flex items-stretch flex-wrap">
+
+                {{-- COLOR --}}
+                <div class="flex items-center gap-2 px-[18px] py-3 text-sm text-gray-600 border-r border-gray-100">
+                    <span class="w-3 h-3 rounded-full border border-gray-300 shrink-0"
+                        style="background: {{ $order->color }}"></span>
+                    {{ $order->color }}
+                </div>
+
+                {{-- CALCOMANÍAS --}}
+                @if($order->sticker_color)
+                    <div class="flex items-center gap-2 px-[18px] py-3 text-sm font-medium text-amber-700 bg-amber-50 border-r border-amber-200">
+                        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L9.568 3z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>
+                        </svg>
+                        Calcomanía {{ $order->sticker_color }}
+                    </div>
+                @else
+                    <div class="flex items-center gap-2 px-[18px] py-3 text-sm text-gray-400 border-r border-gray-100">
+                        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L9.568 3z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>
+                        </svg>
+                        Sin calcomanías
+                    </div>
+                @endif
+
+                {{-- PIEZAS --}}
+                <div class="flex items-center gap-2 px-[18px] py-3 text-sm text-gray-600 border-r border-gray-100">
+                    <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
+                    </svg>
+                    {{ $order->product->pieces ?? 0 }} piezas
+                </div>
+
+                {{-- FECHA --}}
+                @if($order->due_date)
+                    <div class="flex items-center gap-2 px-[18px] py-3 text-sm border-r border-gray-100
+                        {{ $order->due_date->isPast() ? 'text-red-600 font-medium' : 'text-gray-600' }}">
+                        <svg class="w-4 h-4 shrink-0 {{ $order->due_date->isPast() ? 'text-red-400' : 'text-gray-400' }}"
+                            fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"/>
+                        </svg>
+                        {{ $order->due_date->format('d/m') }}
+                        @if($order->due_date->isPast()) — Vencida @endif
+                    </div>
+                @endif
+
+                {{-- PRECIO Y SALDO (derecha) --}}
+                <div class="ml-auto flex flex-col items-end justify-center px-5 py-3 gap-0.5">
+                    @php $balance = $order->price - $order->payments->sum('amount'); @endphp
+
+                    <span class="text-base font-medium text-gray-900">
                         ${{ number_format($order->price, 0, ',', '.') }}
-                    </p>
+                    </span>
 
-                    @php
-                        $balance = $order->price - $order->payments->sum('amount');
-                    @endphp
-
-                    <p class="text-xs font-semibold mt-1 {{ $balance > 0 ? 'text-red-500' : 'text-green-600' }}">
-                        {{ $balance > 0
-                            ? "Debe $".number_format($balance,0,',','.')
-                            : "Pagado"
-                        }}
-                    </p>
-
+                    @if($balance > 0)
+                        <span class="text-xs text-red-600">
+                            Debe ${{ number_format($balance, 0, ',', '.') }}
+                        </span>
+                    @else
+                        <span class="text-xs text-green-700 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Pagado
+                        </span>
+                    @endif
                 </div>
+
             </div>
 
         </a>
