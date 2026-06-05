@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\ProductionOrder;
+use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -29,7 +30,7 @@ class PaymentController extends Controller
             return back()->withErrors(['error' => "El pago supera el saldo pendiente ($balance)."]);
         }
 
-        Payment::create([
+        $payment = Payment::create([
             'production_order_id' => $order->id,
             'amount' => $request->amount,
             'type' => $request->type,
@@ -45,7 +46,14 @@ class PaymentController extends Controller
             $order->update(['status' => 'delivered']);
         }
 
-        return back()->with('success', 'Pago registrado correctamente.');
+        $order->refresh()->load(['client', 'product', 'payments']);
+
+        $emailSent = MailService::orderPaymentRegistered($order, $payment);
+        
+        $msg = 'Pago registrado correctamente.';
+        $msg .= $emailSent ? ' Cliente notificado por correo.' : ' El cliente no tiene correo registrado.';
+
+        return back()->with('success', $msg);
     }
 
     public function destroy(Payment $payment)

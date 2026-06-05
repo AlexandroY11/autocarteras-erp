@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductionOrder;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
 use App\Modules\Production\Services\ProductionOrderService;
+use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
 
 class ProductionOrderController extends Controller
@@ -112,8 +113,13 @@ class ProductionOrderController extends Controller
             ]);
         }
 
-        return redirect('/production-orders/'.$order->id)
-            ->with('success', 'Orden #'.str_pad($order->consecutive, 3, '0', STR_PAD_LEFT).' creada correctamente.');
+        $order->load(['client', 'product', 'payments']);
+        $emailSent = MailService::orderCreated($order);
+
+        $msg = 'Orden #'.str_pad($order->consecutive, 3, '0', STR_PAD_LEFT).' creada correctamente.';
+        $msg .= $emailSent ? ' Se notificó al cliente por correo.' : ' El cliente no tiene correo registrado.';
+
+        return redirect('/production-orders/'.$order->id)->with('success', $msg);
     }
 
     public function show(ProductionOrder $productionOrder)
@@ -132,7 +138,7 @@ class ProductionOrderController extends Controller
         $products = Product::where('active', true)->orderBy('name')->get();
         $departments = Department::orderBy('name')->get();
 
-        return view('orders.form', [
+        return view('orders.edit', [
             'order' => $productionOrder,
             'products' => $products,
             'departments' => $departments,
@@ -185,15 +191,30 @@ class ProductionOrderController extends Controller
             return back()->withErrors(['error' => 'Esta orden no puede avanzar de etapa.']);
         }
 
+        if ($productionOrder->current_stage_id == 8) {
+            return back()->withErrors([
+                'error' => 'La orden ya se encuentra en la etapa Enviado.'
+            ]);
+        }
+
         $this->service->advanceStage(
             $productionOrder,
             auth()->id(),
             $request->input('notes')
         );
 
-        return back()->with('success', 'Etapa avanzada correctamente.');
-    }
+        $productionOrder->refresh()->load(['client', 'product', 'currentStage', 'payments']);
 
+        $msg = 'Etapa avanzada correctamente.';
+
+        if ($productionOrder->currentStage) {
+            $emailSent = MailService::orderStageChanged($productionOrder, $productionOrder->currentStage);
+            $msg .= $emailSent ? ' Cliente notificado por correo.' : ' El cliente no tiene correo registrado.';
+        }
+
+        return back()->with('success', $msg);
+    }
+    
     public function cancel(ProductionOrder $productionOrder)
     {
         if ($productionOrder->status === 'delivered') {

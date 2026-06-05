@@ -73,5 +73,22 @@ window.showAlert = {
         }).then((result) => {
             if (result.isConfirmed) document.getElementById(formId).submit();
         });
-    }
+    },
+
+    confirm(event, message = '¿Confirmar acción?', confirmText = 'Sí, confirmar') {
+        event.preventDefault();
+        const form = event.target;
+        Swal.fire({
+            title: message,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#1d4ed8',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: confirmText,
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) form.submit();
+        });
+    },
 };
