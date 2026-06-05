@@ -135,7 +135,7 @@
                         </div>
 
                         {{-- ETAPA --}}
-                        <div class="flex items-center gap-2.5 px-5 py-4 border-l border-gray-100">
+                        <div class="flex items-center gap-2.5 px-5 py-4 border-l border-gray-100 shrink-0">
                             @if($order->currentStage)
                                 <span class="w-2.5 h-2.5 rounded-full shrink-0"
                                     style="background: {{ $order->currentStage->color }}"></span>
@@ -152,7 +152,7 @@
                     </div>
 
                     {{-- FILA INFERIOR --}}
-                    <div class="flex items-stretch flex-wrap">
+                    <div class="flex items-center flex-wrap border-t border-gray-100">
 
                         {{-- COLOR --}}
                         <div class="flex items-center gap-2 px-[18px] py-3 text-sm text-gray-600 border-r border-gray-100">
@@ -202,7 +202,7 @@
                         @endif
 
                         {{-- PRECIO Y SALDO (derecha) --}}
-                        <div class="ml-auto flex flex-col items-end justify-center px-5 py-3 gap-0.5">
+                        <div class="w-full flex flex-row items-center justify-between px-[18px] py-3 border-t border-gray-100 sm:w-auto sm:ml-auto sm:flex-col sm:items-end sm:border-t-0">
                             @php $balance = $order->price - $order->payments->sum('amount'); @endphp
 
                             <span class="text-base font-medium text-gray-900">

@@ -64,8 +64,26 @@
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-wider">
                         Contraseña {{ $isEdit ? '(Opcional)' : '*' }}
                     </label>
-                    <input type="password" name="password" {{ $isEdit ? '' : 'required' }}
+
+                    <input
+                        type="password"
+                        name="password"
+                        {{ $isEdit ? '' : 'required' }}
                         placeholder="{{ $isEdit ? 'Dejar en blanco para mantener actual' : 'Mínimo 8 caracteres' }}"
+                        class="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
+                </div>
+
+                {{-- Confirmar contraseña --}}
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-wider">
+                        Confirmar contraseña {{ $isEdit ? '(Opcional)' : '*' }}
+                    </label>
+
+                    <input
+                        type="password"
+                        name="password_confirmation"
+                        {{ $isEdit ? '' : 'required' }}
+                        placeholder="Repite la contraseña"
                         class="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
                 </div>
 
