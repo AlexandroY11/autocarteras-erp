@@ -135,12 +135,11 @@
                         </div>
 
                         {{-- ETAPA --}}
-                        <div class="flex items-center gap-2.5 px-5 py-4 border-l border-gray-100 shrink-0">
+                        <div class="flex items-center gap-2 px-3 py-4 border-l border-gray-100 shrink-0 max-w-[120px]">
                             @if($order->currentStage)
                                 <span class="w-2.5 h-2.5 rounded-full shrink-0"
                                     style="background: {{ $order->currentStage->color }}"></span>
-                                <span class="text-sm font-medium"
-                                    style="color: {{ $order->currentStage->color }}">
+                                <span class="text-sm font-medium truncate" style="color: {{ $order->currentStage->color }}">
                                     {{ $order->currentStage->name }}
                                 </span>
                             @else

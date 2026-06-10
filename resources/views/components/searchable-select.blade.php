@@ -4,7 +4,7 @@
     'placeholder' => 'Buscar...',
     'selected' => '',
     'disabled' => false,
-    'listenKey' => null,  // ← clave única para escuchar eventos externos
+    'listenKey' => null,  
 ])
 
 <div x-data="{
@@ -22,6 +22,7 @@
     },
 
     select(option) {
+        console.log('Seleccionado:', option);
         this.selected = option.value;
         this.selectedLabel = option.label;
         this.search = '';

@@ -58,12 +58,21 @@
                 this.clientMode = 'existing'; 
             }, 
             
-            selectProduct(id) { 
-                const products = {{ $products->map(fn($p) => ['id' => $p->id, 'price' => $p->base_price])->toJson() }}; 
-                const p = products.find(p => p.id == id); 
-                if (p) { 
+            selectProduct(id) {
+                console.log('ID recibido:', id);
+
+                const products = {{ $products->map(fn($p) => [
+                    'id' => $p->id,
+                    'price' => $p->base_price
+                ])->toJson() }};
+
+                const p = products.find(p => p.id == id);
+
+                if (p) {
                     this.price = parseFloat(p.price);
-                    // No recalculamos la fecha aquí si el usuario ya la cambió manualmente
+                    console.log('Precio actualizado:', this.price);
+                } else {
+                    console.error('Producto no encontrado en la lista');
                 }
             },
             
@@ -273,12 +282,14 @@
                 </svg>
                 Producto
             </h2>            
-            <x-searchable-select
-                name="product_id"
-                placeholder="Buscar producto..." 
-                :selected="old('product_id')"
-                :options="$products->map(fn($p) => ['value' => (string) $p->id, 'label' => $p->name . ' — $' . number_format($p->base_price, 0, ',', '.')])->toArray()"
-                @selected.window="selectProduct($event.detail.value)" />
+            <div x-on:selected="selectProduct($event.detail.value)">
+                <x-searchable-select
+                    name="product_id"
+                    placeholder="Buscar producto..." 
+                    :selected="old('product_id')"
+                    :options="$products->map(fn($p) => ['value' => (string) $p->id, 'label' => $p->name . ' — $' . number_format($p->base_price, 0, ',', '.')])->toArray()"
+                />
+            </div>
             @error('product_id') <p class="text-red-500 text-xs font-bold mt-1">{{ $message }}</p> @enderror
         </div>
 
