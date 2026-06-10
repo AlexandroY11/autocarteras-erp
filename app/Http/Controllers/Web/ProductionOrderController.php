@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Department;
+use App\Models\Holiday;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductionOrder;
+use App\Models\Stage;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
 use App\Modules\Production\Services\ProductionOrderService;
 use App\Services\Mail\MailService;
@@ -19,10 +21,53 @@ class ProductionOrderController extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return redirect('/orders');
+        $query = ProductionOrder::with(['client', 'product', 'currentStage', 'payments']);
+
+        // Filtros existentes
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('consecutive', 'like', "%$search%")
+                ->orWhereHas('client', fn($q) => $q->where('full_name', 'like', "%$search%"));
+            });
+        }
+
+        if ($request->filled('stage')) {
+            $query->where('current_stage_id', $request->stage);
+        }
+
+        // --- NUEVO: Filtro por Estado de Tiempo ---
+        if ($request->filled('time_status')) {
+            $status = $request->time_status;
+            if ($status === 'overdue') {
+                $query->where('due_date', '<', now()->startOfDay());
+            } elseif ($status === 'critical') {
+                // Lógica: Días restantes < Días promedio del producto
+                $query->whereHas('product', function($q) {
+                    $q->whereRaw('DATEDIFF(production_orders.due_date, NOW()) < products.avg_production_days');
+                })->where('due_date', '>=', now()->startOfDay());
+            }
+        }
+
+        // --- NUEVO: Ordenamiento por Prioridad ---
+        // 1. Vencidos, 2. Críticos (slack < 0), 3. Próximos (slack <= 2), 4. A tiempo
+        $query->orderByRaw("
+            CASE 
+                WHEN due_date < NOW() THEN 1
+                WHEN DATEDIFF(due_date, NOW()) < (SELECT avg_production_days FROM products WHERE id = production_orders.product_id) THEN 2
+                WHEN DATEDIFF(due_date, NOW()) <= (SELECT avg_production_days + 2 FROM products WHERE id = production_orders.product_id) THEN 3
+                ELSE 4
+            END ASC
+        ")->orderBy('due_date', 'asc');
+
+        $orders = $query->paginate(15)->withQueryString();
+        $stages = Stage::all();
+
+        return view('orders.index', compact('orders', 'stages'));
     }
+
 
     public function create()
     {
@@ -225,4 +270,37 @@ class ProductionOrderController extends Controller
 
         return redirect('/orders')->with('success', 'Orden cancelada.');
     }
+
+    public function calendar(Request $request)
+    {
+        $month = $request->get('month', now()->month);
+        $year = $request->get('year', now()->year);
+
+        $orders = ProductionOrder::with(['product', 'currentStage'])
+            ->whereYear('due_date', $year)
+            ->whereMonth('due_date', $month)
+            // FILTRO: Excluir órdenes canceladas
+            ->where('status', '!=', 'cancelled')
+            ->get()
+            ->groupBy(function($order) {
+                return $order->due_date->format('Y-m-d');
+            });
+
+        $holidays = Holiday::getHolidayDates($year);
+
+        return view('orders.calendar', compact('orders', 'month', 'year', 'holidays'));
+    }
+
+    public function dayDetail($date)
+    {
+        $orders = ProductionOrder::with(['product', 'currentStage', 'client'])
+            ->whereDate('due_date', $date)
+            // FILTRO: Excluir órdenes canceladas
+            ->where('status', '!=', 'cancelled')
+            ->get();
+
+        return view('orders.day-detail', compact('orders', 'date'));
+    }
+
+
 }

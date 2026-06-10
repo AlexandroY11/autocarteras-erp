@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -77,4 +78,52 @@ class ProductionOrder extends Model
     {
         return $this->price - $this->total_paid;
     }
+
+    public function getDaysRemainingAttribute(): ?int
+    {
+        if (!$this->due_date) {
+            return null;
+        }
+        // Usamos startOfDay() para comparar fechas sin importar la hora
+        return Carbon::now()->startOfDay()->diffInDays($this->due_date->startOfDay(), false);
+    }
+
+    /**
+     * Calcula la holgura (margen de días).
+     */
+    public function getSlackAttribute(): ?int
+    {
+        if (!$this->due_date || !$this->product) {
+            return null;
+        }
+        
+        $daysRemaining = $this->days_remaining;
+        $daysNeeded = $this->product->avg_production_days;
+
+        return $daysRemaining - $daysNeeded;
+    }
+
+    /**
+     * Determina el estado de tiempo de la orden.
+     */
+    public function getTimeStatusAttribute(): string
+    {
+        if (in_array($this->status, ['done', 'delivered'])) return 'completed';
+        if (!$this->due_date) return 'on_time';
+        
+        $today = now()->startOfDay();
+        $dueDate = $this->due_date->startOfDay();
+        
+        if ($dueDate->isPast() && !$dueDate->isToday()) return 'overdue';
+
+        $daysRemaining = $today->diffInDays($dueDate, false);
+        $avgDays = $this->product->avg_production_days ?? 0;
+        $slack = $daysRemaining - $avgDays;
+
+        if ($slack < 0) return 'critical';
+        if ($slack <= 2) return 'warning';
+        
+        return 'on_time';
+    }
+
 }

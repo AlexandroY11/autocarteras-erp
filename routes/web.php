@@ -45,6 +45,10 @@ Route::middleware('auth')->group(function () {
         [ProductionOrderController::class, 'show'])
         ->whereNumber('production_order');
 
+    Route::get('/production-orders/calendar', [ProductionOrderController::class, 'calendar']);
+    Route::get('/production-orders/calendar/{date}', [ProductionOrderController::class, 'dayDetail']);
+
+
     // Avanzar etapa — operativos y admin
     Route::post('/production-orders/{productionOrder}/advance-stage',
         [ProductionOrderController::class, 'advanceStage']);
