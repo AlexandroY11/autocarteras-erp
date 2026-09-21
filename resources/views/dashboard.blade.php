@@ -44,8 +44,9 @@
     </div>
 
     {{-- 3. FINANZAS Y RENDIMIENTO --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {{-- Ingresos del Mes --}}
+    <div class="grid grid-cols-1 md:grid-cols-{{ isset($monthlyRevenue) ? 3 : 1 }} gap-4">
+        @if(isset($monthlyRevenue))
+        {{-- Ingresos del Mes — solo Admin (sección 21) --}}
         <div class="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
             <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-full -mr-16 -mt-16"></div>
             <div class="relative">
@@ -61,6 +62,7 @@
                 <p class="text-xs font-bold text-gray-400 mt-1">Recaudado en {{ now()->format('F') }}</p>
             </div>
         </div>
+        @endif
 
         {{-- Órdenes del Mes --}}
         <div class="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
@@ -79,7 +81,8 @@
             </div>
         </div>
 
-        {{-- Saldo Pendiente --}}
+        @if(isset($totalPending))
+        {{-- Saldo Pendiente — solo Admin (sección 21) --}}
         <div class="bg-gray-900 p-6 rounded-[2.5rem] shadow-xl relative overflow-hidden">
             <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
             <div class="relative">
@@ -95,6 +98,7 @@
                 <p class="text-xs font-bold text-gray-500 mt-1">Saldo pendiente por cobrar</p>
             </div>
         </div>
+        @endif
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -143,6 +147,43 @@
         </div>
     </div>
 
+    {{-- ÓRDENES EN ETAPAS QUE PUEDES TRABAJAR (aproximado por habilidad) --}}
+    @if($hasWorkableSkills)
+    <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="text-lg font-black text-gray-900 flex items-center gap-2">
+                <span class="w-2 h-6 bg-blue-600 rounded-full"></span>
+                Órdenes en etapas que puedes trabajar
+            </h3>
+        </div>
+        <p class="text-xs font-medium text-gray-400 mb-6">
+            Aproximado por tu habilidad de etapa — no es una asignación personal. Si otro compañero tiene la misma habilidad, también ve estas órdenes.
+        </p>
+
+        <div class="space-y-3">
+            @forelse($myWorkableOrders as $order)
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-3xl">
+                <div class="flex items-center gap-4">
+                    <div>
+                        <p class="text-sm font-black text-gray-900 leading-none mb-1">{{ $order->client->full_name }}</p>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-tighter">
+                            {{ $order->product->name }} · Vence {{ $order->due_date->diffForHumans() }}
+                        </p>
+                    </div>
+                </div>
+                <span class="text-xs font-black text-gray-700 bg-white px-3 py-1 rounded-lg shadow-sm">
+                    {{ $order->currentStage->name ?? 'Sin etapa' }}
+                </span>
+            </div>
+            @empty
+            <div class="text-center py-6">
+                <p class="text-sm font-bold text-gray-400">No hay órdenes pendientes en tus etapas ahora mismo.</p>
+            </div>
+            @endforelse
+        </div>
+    </div>
+    @endif
+
     {{-- 4. ÓRDENES VENCIDAS (ESTILO FILA) --}}
     <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
         <div class="flex justify-between items-center mb-6">
@@ -170,7 +211,7 @@
                 <div class="text-right">
                     <p class="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Etapa Actual</p>
                     <span class="text-xs font-black text-gray-700 bg-white px-3 py-1 rounded-lg shadow-sm">
-                        {{ $order->currentStage->name }}
+                        {{ $order->currentStage->name ?? 'Sin etapa' }}
                     </span>
                 </div>
             </div>

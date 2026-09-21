@@ -57,7 +57,7 @@
                                 </svg>
                             </div>
                             <span class="text-[10px] font-black {{ $user->isAdmin() ? 'text-blue-700' : 'text-gray-500' }} uppercase tracking-widest">
-                                {{ $user->isAdmin() ? 'Administrador' : 'Trabajador' }}
+                                {{ $user->role_label }}
                             </span>
                         </div>
 

@@ -12,23 +12,25 @@ class OrderController extends Controller
     {
         $user = auth()->user();
 
-        // Trabajadores ven solo sus tareas
+        // Worker y Director: misma vista, mismo filtro por habilidad (solo
+        // etapas que el usuario puede avanzar) — swipe-to-advance, con
+        // cliente/ciudad visibles pero sin nada financiero (sección 21).
         if ($user->isOperative()) {
-            $myOrders = ProductionOrder::with(['client', 'product', 'currentStage', 'payments'])
-                ->whereNotIn('status', ['done', 'delivered', 'cancelled'])
-                ->whereHas('currentStage', fn ($q) => $q->whereIn('id', $user->skills->pluck('id'))
-                )
+            $myOrders = ProductionOrder::with(['client.city', 'product', 'currentStage'])
+                ->whereNotIn('status', ['done', 'cancelled'])
+                ->whereHas('currentStage', fn ($q) => $q->whereIn('id', $user->skills->pluck('id')))
                 ->orderBy('due_date')
                 ->get();
 
-            return view('orders.operative', compact('myOrders'));
+            return view('orders.my-tasks', compact('myOrders'));
         }
 
         // Admin ve todo
         $stages = Stage::where('active', true)->orderBy('order')->get();
 
         $orders = ProductionOrder::with(['client', 'product', 'currentStage', 'payments'])
-            ->whereNotIn('status', ['delivered', 'cancelled'])
+            ->where('status', '!=', 'cancelled')
+            ->where(fn ($q) => $q->whereNull('dispatch_status')->orWhere('dispatch_status', '!=', 'delivered'))
             ->when(request('stage'), fn ($q, $s) => $q->where('current_stage_id', $s))
             ->when(request('search'), fn ($q, $s) => $q->whereHas('client', fn ($q) => $q->where('first_name', 'ilike', "%{$s}%")
                       ->orWhere('last_name', 'ilike', "%{$s}%")

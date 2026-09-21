@@ -93,6 +93,7 @@
                         <label class="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-wider">Rol de Usuario</label>
                         <select name="role" class="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
                             <option value="worker" {{ old('role', $user->role) === 'worker' ? 'selected' : '' }}>Trabajador (Producción)</option>
+                            <option value="director" {{ old('role', $user->role) === 'director' ? 'selected' : '' }}>Director (Supervisión)</option>
                             <option value="admin" {{ old('role', $user->role) === 'admin' ? 'selected' : '' }}>Administrador (Gestión)</option>
                         </select>
                     </div>

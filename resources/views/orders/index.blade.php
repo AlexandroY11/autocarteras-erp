@@ -124,11 +124,38 @@
                 </div>
                 @php $lastGroup = $currentGroup; @endphp
             @endif
+            @php
+                $isDispatchPhase = $order->status === 'done';
+
+                if (!$isDispatchPhase) {
+                    $canSwipe = !in_array($order->status, ['done', 'cancelled']);
+                    $swipeAction = "/production-orders/{$order->id}/advance-stage";
+                    $swipeLabel = 'Avanzar etapa';
+                } else {
+                    $canSwipe = in_array($order->dispatch_status, ['pending_dispatch', 'dispatched', 'sent'], true);
+                    $swipeAction = match ($order->dispatch_status) {
+                        'pending_dispatch' => "/production-orders/{$order->id}/dispatch",
+                        'dispatched'       => "/production-orders/{$order->id}/mark-sent",
+                        'sent'             => "/production-orders/{$order->id}/mark-delivered",
+                        default            => null,
+                    };
+                    $swipeLabel = match ($order->dispatch_status) {
+                        'pending_dispatch' => 'Despachar',
+                        'dispatched'       => 'Marcar en tránsito',
+                        'sent'             => 'Marcar entregado',
+                        'delivered'        => 'Entregado',
+                        'returned'         => 'Devuelto',
+                        default            => 'Sin acción',
+                    };
+                }
+
+                $canSwipe = $canSwipe && auth()->user()->isAdmin();
+            @endphp
             <div
                 data-swipeable
-                data-can-advance="{{ $order->current_stage_id != 8 ? '1' : '0' }}"
+                data-can-advance="{{ $canSwipe ? '1' : '0' }}"
                 class="relative overflow-hidden rounded-2xl
-                    {{ $order->current_stage_id == 8 ? 'opacity-90' : '' }}"
+                    {{ !$canSwipe ? 'opacity-90' : '' }}"
             >
                 {{-- FONDO VERDE --}}
                 <div data-bg class="absolute inset-0 flex items-center gap-3 pl-6 rounded-2xl transition-colors duration-300"
@@ -136,29 +163,26 @@
                     <svg class="w-5 h-5 text-green-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
                     </svg>
-                    @if($order->current_stage_id == 8)
-                        <span class="text-sm font-medium text-green-200">
-                            Última etapa alcanzada
-                        </span>
-                    @else
-                        <span class="text-sm font-medium text-green-200">
-                            Avanzar etapa
-                        </span>
-                    @endif               
+                    <span class="text-sm font-medium text-green-200">
+                        {{ $canSwipe ? $swipeLabel : ($isDispatchPhase ? $swipeLabel : 'Última etapa alcanzada') }}
+                    </span>
                 </div>
 
                 {{-- FORM OCULTO --}}
-                @if(!in_array($order->status, ['done', 'delivered', 'cancelled']))
+                @if($swipeAction)
                 <form data-form method="POST"
-                    action="/production-orders/{{ $order->id }}/advance-stage"
+                    action="{{ $swipeAction }}"
                     class="hidden">
                     @csrf
                 </form>
                 @endif
 
-                {{-- CARD (mismo contenido que tenías, solo cambia el wrapper de <a> a <div>) --}}
-                <a data-card href="/production-orders/{{ $order->id }}"
-                class="block bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                {{-- CARD: no es un <a> real a propósito — la navegación por tap se
+                     dispara a mano en JS (ver data-href) para no competir con el
+                     preventDefault del swipe. Un <a> real aquí navegaba antes de
+                     que el usuario pudiera escribir en el modal del número de guía. --}}
+                <div data-card data-href="/production-orders/{{ $order->id }}"
+                class="block bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer"
                 style="will-change: transform;">
 
                 {{-- FILA SUPERIOR --}}
@@ -200,6 +224,14 @@
                         </div>
 
                     </div>
+
+                    @if($order->guide_number_missing)
+                        <div class="px-5 py-2 border-t border-gray-100">
+                            <span class="text-[10px] font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full uppercase">
+                                Sin guía
+                            </span>
+                        </div>
+                    @endif
 
                     {{-- FILA INFERIOR --}}
                     <div class="flex items-center flex-wrap border-t border-gray-100">
@@ -289,9 +321,13 @@
                             @endif
                         </div>
 
-                        {{-- PRECIO Y SALDO (derecha) --}}
+                        {{-- PRECIO Y SALDO (derecha) — solo Admin (sección 21). Esta
+                             vista hoy solo la renderiza Admin (ver OrderController::index()),
+                             pero el gate vive aquí, en el dato, no en "quién llega a la
+                             ruta hoy" — si el branching cambia mañana, esto ya está listo. --}}
+                        @if(auth()->user()->isAdmin())
                         <div class="w-full flex flex-row items-center justify-between px-[18px] py-3 border-t border-gray-100 sm:w-auto sm:ml-auto sm:flex-col sm:items-end sm:border-t-0">
-                            @php $balance = $order->price - $order->payments->sum('amount'); @endphp
+                            @php $balance = $order->product_balance; @endphp
 
                             <span class="text-base font-medium text-gray-900">
                                 ${{ number_format($balance > 0 ? $order->price : $order->price, 0, ',', '.') }}
@@ -310,9 +346,10 @@
                                 </span>
                             @endif
                         </div>
+                        @endif
 
                     </div>
-                </a>
+                </div>
             </div>
 
             @empty
@@ -333,144 +370,5 @@
 
     </div>
 
-    {{-- SweetAlert2 CDN --}}
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script>
-        let activeSwipe = null;
-        document.querySelectorAll('[data-swipeable]' ).forEach(wrap => {
-            const card = wrap.querySelector('[data-card]');
-            const canAdvance = wrap.dataset.canAdvance === '1';
-            const bg   = wrap.querySelector('[data-bg]');
-            const form = wrap.querySelector('[data-form]');
-            let startX = 0, curX = 0, dragging = false, movedDistance = 0;
-            const CLICK_THRESHOLD = 10; // Pixeles para diferenciar un click de un swipe
-
-            bg.style.opacity = 0;
-            bg.style.transition = 'background-color 0.3s ease-in-out, opacity 0.3s ease-in-out';
-
-            const THRESHOLD = 0.38;
-
-            const handleMouseMove = (e) => onMove(e.clientX);
-            const handleMouseUp = () => onEnd();
-
-            function onStart(x, event) {
-
-                if (!canAdvance) {
-                    return;
-                }
-
-                if (activeSwipe && activeSwipe !== wrap) {
-                    return;
-                }
-
-                activeSwipe = wrap;
-
-                startX = x;
-                curX = 0;
-                movedDistance = 0;
-                dragging = true;
-
-                card.style.transition = 'none';
-
-                if (event?.preventDefault) {
-                    event.preventDefault();
-                }
-
-                document.addEventListener('mousemove', handleMouseMove);
-                document.addEventListener('mouseup', handleMouseUp);
-            }
-
-            function onMove(x) {
-                if (activeSwipe !== wrap) return;
-                if (!dragging) return;
-                const deltaX = x - startX;
-                curX = Math.max(0, deltaX);
-                movedDistance = Math.abs(deltaX); // Actualizar la distancia movida
-
-                const ratio = Math.min(curX / wrap.offsetWidth, 1);
-                card.style.transform = `translateX(${curX}px)`;
-                bg.style.opacity = Math.min(ratio * 2.5, 1);
-                bg.style.backgroundColor = ratio >= THRESHOLD ? '#27500A' : '#3B6D11';
-            }
-
-            function onEnd() {
-                if (activeSwipe !== wrap) return;
-
-                activeSwipe = null;
-
-                if (!dragging) return;
-                dragging = false;
-
-                // Eliminar listeners de mousemove y mouseup del document
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-
-                const ratio = curX / wrap.offsetWidth;
-                card.style.transition = 'transform 0.35s cubic-bezier(.25,.46,.45,.94)';
-
-                if (movedDistance < CLICK_THRESHOLD) {
-                    // Si la distancia movida es menor que el umbral, se considera un click
-                    // No hacemos nada aquí, permitimos que el evento click del <a> se propague
-                    card.style.transform = 'translateX(0)';
-                    bg.style.opacity = 0;
-                    bg.style.backgroundColor = '#3B6D11';
-                    return;
-                }
-
-                // Si es un swipe, prevenimos la navegación del <a>
-                // Esto se maneja con un listener en el <a> que previene el default si isSwiping es true
-
-                if (ratio >= THRESHOLD) {
-                    if (navigator.vibrate) navigator.vibrate(40);
-                    card.style.transform = `translateX(${wrap.offsetWidth}px)`;
-
-                    Swal.fire({
-                        title: '¿Avanzar etapa?',
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonColor: '#1d4ed8',
-                        cancelButtonColor: '#6b7280',
-                        confirmButtonText: 'Sí, avanzar',
-                        cancelButtonText: 'Cancelar',
-                        reverseButtons: true
-                    }).then(result => {
-                        if (result.isConfirmed) {
-                            if (form) {
-                                form.submit();
-                            } else {
-                                card.style.transform = 'translateX(0)';
-                                bg.style.opacity = 0;
-                                bg.style.backgroundColor = '#3B6D11';
-                            }
-                        } else {
-                            card.style.transform = 'translateX(0)';
-                            bg.style.opacity = 0;
-                            bg.style.backgroundColor = '#3B6D11';
-                        }
-                    });
-                } else {
-                    card.style.transform = 'translateX(0)';
-                    bg.style.opacity = 0;
-                    bg.style.backgroundColor = '#3B6D11';
-                }
-                curX = 0;
-            }
-
-            // Eventos de ratón
-            wrap.addEventListener('mousedown',  e => onStart(e.clientX, e));
-
-            // Eventos táctiles
-            wrap.addEventListener('touchstart', e => onStart(e.touches[0].clientX, e), { passive: true });
-            wrap.addEventListener('touchmove',  e => onMove(e.touches[0].clientX),  { passive: true });
-            wrap.addEventListener('touchend',   () => onEnd());
-
-            // Prevenir la navegación del <a> si se detectó un swipe
-            card.addEventListener('click', e => {
-                if (movedDistance >= CLICK_THRESHOLD) {
-                    e.preventDefault();
-                }
-            });
-        });
-    </script>
+    @include('orders.partials.swipe-script')
 </x-app-layout>

@@ -18,6 +18,18 @@ class User extends Authenticatable
     use SoftDeletes;
     use WebauthnAuthenticatable;
 
+    /**
+     * Único mapeo rol→español — cualquier vista que muestre el rol en texto
+     * debe usar role_label, no traducir por su cuenta (integration no
+     * aparece aquí a propósito: es una cuenta técnica, no se muestra/asigna
+     * desde el panel humano).
+     */
+    public const ROLE_LABELS = [
+        'admin' => 'Administrador',
+        'director' => 'Director',
+        'worker' => 'Trabajador',
+    ];
+
     protected $fillable = [
         'name',
         'email',
@@ -76,5 +88,10 @@ class User extends Authenticatable
         }
 
         return $this->skills()->where('stage_id', $stageId)->exists();
+    }
+
+    public function getRoleLabelAttribute(): string
+    {
+        return self::ROLE_LABELS[$this->role] ?? $this->role;
     }
 }

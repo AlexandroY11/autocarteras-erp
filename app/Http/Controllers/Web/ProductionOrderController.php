@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductionOrder;
 use App\Models\Stage;
+use App\Modules\Dispatch\Services\DispatchService;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
 use App\Modules\Production\Services\ProductionOrderService;
 use App\Services\Mail\MailService;
@@ -17,13 +18,15 @@ use Illuminate\Http\Request;
 
 class ProductionOrderController extends Controller
 {
-    public function __construct(private ProductionOrderService $service)
-    {
+    public function __construct(
+        private ProductionOrderService $service,
+        private DispatchService $dispatchService,
+    ) {
     }
 
     public function index(Request $request)
     {
-        $query = ProductionOrder::with(['client', 'product', 'currentStage', 'payments']);
+        $query = ProductionOrder::with(['client', 'product', 'currentStage', 'payments', 'orderDispatches']);
 
         // Filtros existentes
         if ($request->filled('search')) {
@@ -45,8 +48,10 @@ class ProductionOrderController extends Controller
                 $query->where('due_date', '<', now()->startOfDay());
             } elseif ($status === 'critical') {
                 // Lógica: Días restantes < Días promedio del producto
+                // (due_date - CURRENT_DATE) es el equivalente nativo de Postgres
+                // a DATEDIFF(due_date, NOW()) — diferencia en días completos.
                 $query->whereHas('product', function($q) {
-                    $q->whereRaw('DATEDIFF(production_orders.due_date, NOW()) < products.avg_production_days');
+                    $q->whereRaw('(production_orders.due_date - CURRENT_DATE) < products.avg_production_days');
                 })->where('due_date', '>=', now()->startOfDay());
             }
         }
@@ -54,10 +59,10 @@ class ProductionOrderController extends Controller
         // --- NUEVO: Ordenamiento por Prioridad ---
         // 1. Vencidos, 2. Críticos (slack < 0), 3. Próximos (slack <= 2), 4. A tiempo
         $query->orderByRaw("
-            CASE 
+            CASE
                 WHEN due_date < NOW() THEN 1
-                WHEN DATEDIFF(due_date, NOW()) < (SELECT avg_production_days FROM products WHERE id = production_orders.product_id) THEN 2
-                WHEN DATEDIFF(due_date, NOW()) <= (SELECT avg_production_days + 2 FROM products WHERE id = production_orders.product_id) THEN 3
+                WHEN (due_date - CURRENT_DATE) < (SELECT avg_production_days FROM products WHERE id = production_orders.product_id) THEN 2
+                WHEN (due_date - CURRENT_DATE) <= (SELECT avg_production_days + 2 FROM products WHERE id = production_orders.product_id) THEN 3
                 ELSE 4
             END ASC
         ")->orderBy('due_date', 'asc');
@@ -106,6 +111,9 @@ class ProductionOrderController extends Controller
             'advance_payment' => 'nullable|numeric|min:0',
         ]);
 
+        // NOTA: 'advance_payment' se valida aquí y se usa más abajo para crear
+        // el Payment inicial directamente (líneas ~148-159) — no forma parte
+        // del DTO/columna de production_orders, que ya no la tiene.
         if ($request->filled('client_id')) {
             $clientId = $request->client_id;
         } else {
@@ -139,7 +147,6 @@ class ProductionOrderController extends Controller
             'sticker_color' => $request->sticker_color,
             'observations' => $request->observations,
             'price' => $request->price,
-            'advance_payment' => $request->advance_payment ?? 0,
             'due_date' => $request->due_date,
         ]);
 
@@ -173,6 +180,7 @@ class ProductionOrderController extends Controller
             'client', 'product', 'currentStage',
             'orderStages.stage', 'orderStages.assignedTo',
             'payments.registeredBy',
+            'orderDispatches',
         ]);
 
         return view('orders.show', compact('order'));
@@ -200,7 +208,6 @@ class ProductionOrderController extends Controller
             'sticker_color' => 'nullable|string|max:100',
             'observations' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'advance_payment' => 'nullable|numeric|min:0',
             'due_date' => 'required|date',
         ]);
 
@@ -214,7 +221,6 @@ class ProductionOrderController extends Controller
                 'sticker_color' => $request->sticker_color,
                 'observations' => $request->observations,
                 'price' => $request->price,
-                'advance_payment' => $request->advance_payment ?? 0,
                 'due_date' => $request->due_date,
             ])
         );
@@ -223,30 +229,27 @@ class ProductionOrderController extends Controller
             ->with('success', 'Orden actualizada.');
     }
 
-    public function destroy(ProductionOrder $productionOrder)
-    {
-        $productionOrder->delete();
-
-        return redirect('/orders')->with('success', 'Orden eliminada.');
-    }
-
     public function advanceStage(Request $request, ProductionOrder $productionOrder)
     {
-        if (in_array($productionOrder->status, ['done', 'delivered', 'cancelled'])) {
+        if (in_array($productionOrder->status, ['done', 'cancelled'])) {
             return back()->withErrors(['error' => 'Esta orden no puede avanzar de etapa.']);
         }
 
-        if ($productionOrder->current_stage_id == 8) {
+        if ($productionOrder->current_stage_id !== null && $productionOrder->current_stage_id === Stage::enviadoId()) {
             return back()->withErrors([
                 'error' => 'La orden ya se encuentra en la etapa Enviado.'
             ]);
         }
 
-        $this->service->advanceStage(
-            $productionOrder,
-            auth()->id(),
-            $request->input('notes')
-        );
+        try {
+            $this->service->advanceStage(
+                $productionOrder,
+                auth()->user(),
+                $request->input('notes')
+            );
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
 
         $productionOrder->refresh()->load(['client', 'product', 'currentStage', 'payments']);
 
@@ -262,8 +265,8 @@ class ProductionOrderController extends Controller
     
     public function cancel(ProductionOrder $productionOrder)
     {
-        if ($productionOrder->status === 'delivered') {
-            return back()->withErrors(['error' => 'No se puede cancelar una orden ya entregada.']);
+        if (! in_array($productionOrder->dispatch_status, [null, 'pending_dispatch'], true)) {
+            return back()->withErrors(['error' => 'No se puede cancelar una orden que ya fue despachada.']);
         }
 
         $this->service->cancel($productionOrder);
@@ -271,8 +274,81 @@ class ProductionOrderController extends Controller
         return redirect('/orders')->with('success', 'Orden cancelada.');
     }
 
+    public function dispatch(Request $request, ProductionOrder $productionOrder)
+    {
+        $request->validate(['guide_number' => 'nullable|string|max:255']);
+
+        try {
+            $this->dispatchService->dispatch($productionOrder, $request->guide_number, auth()->user());
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Orden despachada correctamente.');
+    }
+
+    public function setGuideNumber(Request $request, ProductionOrder $productionOrder)
+    {
+        $request->validate(['guide_number' => 'required|string|max:255']);
+
+        try {
+            $this->dispatchService->setGuideNumber($productionOrder, $request->guide_number);
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Número de guía actualizado.');
+    }
+
+    public function markSent(ProductionOrder $productionOrder)
+    {
+        try {
+            $this->dispatchService->markSent($productionOrder, auth()->user());
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Orden marcada como en tránsito.');
+    }
+
+    public function markDelivered(ProductionOrder $productionOrder)
+    {
+        try {
+            $this->dispatchService->markDelivered($productionOrder, auth()->user());
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Orden marcada como entregada.');
+    }
+
+    public function markReturned(Request $request, ProductionOrder $productionOrder)
+    {
+        $request->validate(['return_reason' => 'required|string']);
+
+        try {
+            $this->dispatchService->markReturned($productionOrder, $request->return_reason, auth()->user());
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Orden marcada como devuelta.');
+    }
+
+    public function returnToPendingDispatch(ProductionOrder $productionOrder)
+    {
+        try {
+            $this->dispatchService->returnToPendingDispatch($productionOrder);
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Orden lista para un nuevo despacho.');
+    }
+
     public function calendar(Request $request)
     {
+        $user = auth()->user();
         $month = $request->get('month', now()->month);
         $year = $request->get('year', now()->year);
 
@@ -281,6 +357,11 @@ class ProductionOrderController extends Controller
             ->whereMonth('due_date', $month)
             // FILTRO: Excluir órdenes canceladas
             ->where('status', '!=', 'cancelled')
+            // Worker/Director: solo lo que pueden trabajar según habilidad —
+            // mismo filtro que "Mis tareas".
+            ->when($user->isOperative(), fn ($q) => $q->whereHas(
+                'currentStage', fn ($q) => $q->whereIn('id', $user->skills->pluck('id'))
+            ))
             ->get()
             ->groupBy(function($order) {
                 return $order->due_date->format('Y-m-d');
@@ -293,10 +374,15 @@ class ProductionOrderController extends Controller
 
     public function dayDetail($date)
     {
-        $orders = ProductionOrder::with(['product', 'currentStage', 'client'])
+        $user = auth()->user();
+
+        $orders = ProductionOrder::with(['client.city', 'product', 'currentStage', 'payments'])
             ->whereDate('due_date', $date)
             // FILTRO: Excluir órdenes canceladas
             ->where('status', '!=', 'cancelled')
+            ->when($user->isOperative(), fn ($q) => $q->whereHas(
+                'currentStage', fn ($q) => $q->whereIn('id', $user->skills->pluck('id'))
+            ))
             ->get();
 
         return view('orders.day-detail', compact('orders', 'date'));

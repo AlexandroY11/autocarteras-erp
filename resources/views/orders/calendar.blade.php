@@ -42,10 +42,11 @@
             cursor: pointer !important;
         }
 
-        /* Evitar que el texto se salga */
+        /* overflow:hidden aquí podía recortar a 0 de alto el HTML personalizado
+           de eventContent() — el propio contenido ya usa truncate/overflow-hidden
+           por dentro, no hace falta forzarlo también en el contenedor. */
         .fc-event-main {
-            overflow: hidden;
-            text-overflow: ellipsis;
+            overflow: visible;
         }
 
         /* Hacer que el contenedor del día sea más alto en móvil para que quepan más cards */
@@ -72,26 +73,13 @@
 
             const holidays = @json($holidays);
 
-            const ordersData = {
-                @foreach($orders as $date => $dateOrders)
-                    '{{ $date }}': [
-                        @foreach($dateOrders as $order)
-                        {
-                            id: '{{ $order->id }}',
-                            consecutive: '{{ str_pad($order->consecutive, 3, "0", STR_PAD_LEFT) }}',
-                            product: '{{ addslashes($order->product->name) }}',
-                            client: '{{ addslashes($order->client->full_name) }}',
-                            stage: '{{ $order->currentStage->name ?? "Sin etapa" }}',
-                            color: '{{ $order->currentStage->color ?? "#3b82f6" }}'
-                        },
-                        @endforeach
-                    ],
-                @endforeach
-            };
-
             const calendarEl = document.getElementById('calendar');
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
+                // Sin esto, la vista siempre abría en el mes real actual,
+                // sin importar qué mes le pidió el servidor a la BD para
+                // armar el array "events" de abajo — quedaban desincronizados.
+                initialDate: '{{ sprintf('%04d-%02d-01', $year, $month) }}',
                 locale: 'es',
                 firstDay: 1,
                 headerToolbar: {
@@ -99,6 +87,26 @@
                     center: 'title',
                     right: 'dayGridMonth'
                 },
+
+                // "events" es un array estático armado en el servidor para
+                // el mes {{ $month }}/{{ $year }} — prev/next/hoy no lo
+                // vuelven a pedir solos, así que forzamos una recarga
+                // completa con el mes/año nuevo (mismo patrón que
+                // dateClick/eventClick de abajo).
+                datesSet: function(info) {
+                    const viewYear = info.view.currentStart.getFullYear();
+                    const viewMonth = info.view.currentStart.getMonth() + 1;
+                    if (viewYear !== {{ $year }} || viewMonth !== {{ $month }}) {
+                        window.location.href = `/production-orders/calendar?month=${viewMonth}&year=${viewYear}`;
+                    }
+                },
+
+                // Sin esto, un día con varias órdenes las apilaba sin límite
+                // (o quedaban recortadas por el overflow del contenedor) sin
+                // ningún indicador — con dayMaxEvents, FullCalendar muestra
+                // "+N más" cuando no caben todas.
+                dayMaxEvents: 3,
+                moreLinkText: (n) => `+${n} más`,
 
                 // CLIC EN EL CUADRO DEL DÍA
                 dateClick: function(info) {

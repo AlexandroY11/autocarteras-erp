@@ -16,32 +16,54 @@ class DashboardController extends Controller
         $now = Carbon::now();
         $month = $now->month;
         $year = $now->year;
+        $user = auth()->user();
 
         // Estadísticas generales
         $stats = [
             'pending' => ProductionOrder::where('status', 'pending')->count(),
             'in_progress' => ProductionOrder::where('status', 'in_progress')->count(),
             'done' => ProductionOrder::where('status', 'done')->count(),
-            'delivered' => ProductionOrder::where('status', 'delivered')->count(),
-            'overdue' => ProductionOrder::whereNotIn('status', ['done', 'delivered', 'cancelled'])
+            'delivered' => ProductionOrder::where('dispatch_status', 'delivered')->count(),
+            'overdue' => ProductionOrder::whereNotIn('status', ['done', 'cancelled'])
                                 ->where('due_date', '<', today())->count(),
         ];
 
-        // Dinero del mes
-        $monthlyRevenue = Payment::whereMonth('paid_at', $month)
-            ->whereYear('paid_at', $year)
-            ->sum('amount');
+        // Información financiera global — solo Admin (sección 21: Worker/Director
+        // no deben ver esto). No se calcula siquiera si no aplica, no es solo
+        // un @if en la vista.
+        $monthlyRevenue = null;
+        $totalPending = null;
+
+        if ($user->isAdmin()) {
+            // Dinero del mes
+            $monthlyRevenue = Payment::whereMonth('paid_at', $month)
+                ->whereYear('paid_at', $year)
+                ->sum('amount');
+
+            // Saldo pendiente total (envío + producto, vía el motor de distribución)
+            $totalPending = ProductionOrder::whereNotIn('status', ['cancelled'])
+                ->with('payments')
+                ->get()
+                ->sum(fn ($o) => max(0, $o->total_balance));
+        }
 
         // Órdenes del mes
         $monthlyOrders = ProductionOrder::whereMonth('created_at', $month)
             ->whereYear('created_at', $year)
             ->count();
 
-        // Saldo pendiente total (Añadimos with('payments') para evitar N+1)
-        $totalPending = ProductionOrder::whereNotIn('status', ['cancelled'])
-            ->with('payments')
-            ->get()
-            ->sum(fn ($o) => max(0, $o->price - $o->payments->sum('amount')));
+        // Órdenes en etapas que el usuario logueado puede trabajar (por
+        // habilidad, user_skills) — aproximado, no es una asignación personal:
+        // si dos workers comparten habilidad, ambos ven el mismo número.
+        $workableStageIds = $user->skills()->pluck('stages.id');
+        $hasWorkableSkills = $workableStageIds->isNotEmpty();
+        $myWorkableOrders = $hasWorkableSkills
+            ? ProductionOrder::with(['client', 'product', 'currentStage'])
+                ->whereIn('current_stage_id', $workableStageIds)
+                ->whereNotIn('status', ['done', 'cancelled'])
+                ->orderBy('due_date')
+                ->get()
+            : collect();
 
         // Top ciudades (Actualizado para unir con la tabla 'cities')
         $topCities = ProductionOrder::join('clients', 'clients.id', '=', 'production_orders.client_id')
@@ -55,13 +77,13 @@ class DashboardController extends Controller
         // Órdenes por etapa
         $byStage = Stage::where('active', true)
             ->orderBy('order')
-            ->withCount(['productionOrders as orders_count' => fn ($q) => $q->whereNotIn('status', ['done', 'delivered', 'cancelled']),
+            ->withCount(['productionOrders as orders_count' => fn ($q) => $q->whereNotIn('status', ['done', 'cancelled']),
             ])
             ->get();
 
         // Órdenes vencidas (Cargamos client.city y client.department para la vista)
         $overdueOrders = ProductionOrder::with(['client.city', 'client.department', 'product', 'currentStage'])
-            ->whereNotIn('status', ['done', 'delivered', 'cancelled'])
+            ->whereNotIn('status', ['done', 'cancelled'])
             ->where('due_date', '<', today())
             ->orderBy('due_date')
             ->limit(5)
@@ -69,7 +91,8 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'stats', 'monthlyRevenue', 'monthlyOrders',
-            'totalPending', 'topCities', 'byStage', 'overdueOrders'
+            'totalPending', 'topCities', 'byStage', 'overdueOrders',
+            'myWorkableOrders', 'hasWorkableSkills'
         ));
     }
 }
