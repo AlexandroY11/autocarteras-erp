@@ -17,6 +17,11 @@ class ProductService
             ->when(request('active') !== null, fn($q) =>
                 $q->where('active', filter_var(request('active'), FILTER_VALIDATE_BOOLEAN))
             )
+            ->when(request('pieces'), function ($q, $pieces) {
+                if ($pieces === '1-5') return $q->whereBetween('pieces', [1, 5]);
+                if ($pieces === '6-10') return $q->whereBetween('pieces', [6, 10]);
+                if ($pieces === '11+') return $q->where('pieces', '>', 10);
+            })
             ->orderBy('name')
             ->paginate($perPage);
     }

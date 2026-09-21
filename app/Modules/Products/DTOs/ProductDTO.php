@@ -10,6 +10,7 @@ class ProductDTO
         public readonly int     $pieces,
         public readonly int     $avg_production_days,
         public readonly float   $base_price,
+        public readonly ?float  $shipping_price,
         public readonly ?string $photo,
         public readonly bool    $active,
     ) {}
@@ -22,6 +23,7 @@ class ProductDTO
             pieces:               $data['pieces'] ?? 1,
             avg_production_days:  $data['avg_production_days'] ?? 7,
             base_price:           $data['base_price'],
+            shipping_price:       $data['shipping_price'] ?? null,
             photo:                $data['photo'] ?? null,
             active:               $data['active'] ?? true,
         );
@@ -35,6 +37,7 @@ class ProductDTO
             'pieces'              => $this->pieces,
             'avg_production_days' => $this->avg_production_days,
             'base_price'          => $this->base_price,
+            'shipping_price'      => $this->shipping_price,
             'photo'               => $this->photo,
             'active'              => $this->active,
         ];

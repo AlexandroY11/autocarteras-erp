@@ -4,13 +4,16 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Stage;
+use App\Modules\Stages\Services\StageService;
 use Illuminate\Http\Request;
 
 class StageController extends Controller
 {
+    public function __construct(private StageService $service) {}
+
     public function index()
     {
-        $stages = Stage::orderBy('order')->get();
+        $stages = $this->service->list();
 
         return view('stages.index', compact('stages'));
     }
@@ -22,13 +25,20 @@ class StageController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:100',
+        // NOTA: 'auto_complete' no se expone en este formulario a propósito
+        // (etapa demasiado sensible para un checkbox suelto) — se gestiona
+        // solo vía migración o directamente por la API. No se toca aquí,
+        // así que las etapas nuevas creadas desde Web siempre quedan con el
+        // default de la columna (false).
+        $validated = $request->validate([
+            'name'  => 'required|string|max:100',
             'order' => 'required|integer|min:1',
             'color' => 'nullable|string|max:20',
         ]);
 
-        Stage::create([...$request->all(), 'active' => true]);
+        $validated['active'] = true;
+
+        $this->service->create($validated);
 
         return redirect('/stages')->with('success', 'Etapa creada.');
     }
@@ -40,28 +50,30 @@ class StageController extends Controller
 
     public function update(Request $request, Stage $stage)
     {
-        $request->validate([
-            'name' => 'required|string|max:100',
-            'order' => 'required|integer|min:1',
-            'color' => 'nullable|string|max:20',
+        // NOTA: 'auto_complete' no se expone en este formulario (ver store()).
+        // No se incluye en $validated para no pisar su valor actual con false
+        // cada vez que se edite una etapa desde aquí.
+        $validated = $request->validate([
+            'name'   => 'required|string|max:100',
+            'order'  => 'required|integer|min:1',
+            'color'  => 'nullable|string|max:20',
             'active' => 'boolean',
         ]);
 
-        $stage->update([
-            ...$request->all(),
-            'active' => $request->boolean('active'),
-        ]);
+        $validated['active'] = $request->boolean('active');
+
+        $this->service->update($stage, $validated);
 
         return redirect('/stages')->with('success', 'Etapa actualizada.');
     }
 
     public function destroy(Stage $stage)
     {
-        if ($stage->productionOrders()->exists()) {
-            return redirect('/stages')->withErrors(['error' => 'No se puede eliminar una etapa con órdenes activas.']);
+        try {
+            $this->service->delete($stage);
+        } catch (\Exception $e) {
+            return redirect('/stages')->withErrors(['error' => $e->getMessage()]);
         }
-
-        $stage->delete();
 
         return redirect('/stages')->with('success', 'Etapa eliminada.');
     }

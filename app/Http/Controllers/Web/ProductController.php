@@ -4,27 +4,17 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Modules\Products\DTOs\ProductDTO;
+use App\Modules\Products\Services\ProductService;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    public function __construct(private ProductService $service) {}
 
     public function index()
     {
-        $products = Product::query()
-            // Búsqueda por nombre
-            ->when(request('search'), function($query, $search) {
-                $query->where('name', 'ilike', "%{$search}%");
-            })
-            // Filtro por rango de piezas
-            ->when(request('pieces'), function($query, $pieces) {
-                if ($pieces === '1-5') return $query->whereBetween('pieces', [1, 5]);
-                if ($pieces === '6-10') return $query->whereBetween('pieces', [6, 10]);
-                if ($pieces === '11+') return $query->where('pieces', '>', 10);
-            })
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString(); // Importante para que la paginación mantenga el filtro
+        $products = $this->service->paginate(20)->withQueryString();
 
         return view('products.index', compact('products'));
     }
@@ -42,12 +32,13 @@ class ProductController extends Controller
             'pieces' => 'nullable|integer|min:1',
             'avg_production_days' => 'nullable|integer|min:1',
             'base_price' => 'required|numeric|min:0',
+            'shipping_price' => 'nullable|numeric|min:0',
             'active' => 'boolean',
         ]);
 
         $validated['active'] = $request->boolean('active', true);
 
-        Product::create($validated);
+        $this->service->create(ProductDTO::fromRequest($validated));
 
         return redirect('/products')->with('success', 'Producto creado correctamente.');
     }
@@ -65,19 +56,20 @@ class ProductController extends Controller
             'pieces' => 'nullable|integer|min:1',
             'avg_production_days' => 'nullable|integer|min:1',
             'base_price' => 'required|numeric|min:0',
+            'shipping_price' => 'nullable|numeric|min:0',
             'active' => 'boolean',
         ]);
 
         $validated['active'] = $request->boolean('active', true);
 
-        $product->update($validated);
+        $this->service->update($product, ProductDTO::fromRequest($validated));
 
         return redirect('/products')->with('success', 'Producto actualizado correctamente.');
     }
 
     public function destroy(Product $product)
     {
-        $product->delete();
+        $this->service->delete($product);
 
         return redirect('/products')->with('success', 'Producto eliminado.');
     }

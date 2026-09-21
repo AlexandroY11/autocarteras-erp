@@ -6,28 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\City;
 use App\Models\Client;
 use App\Models\Department;
+use App\Modules\Clients\DTOs\ClientDTO;
+use App\Modules\Clients\Services\ClientService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ClientController extends Controller
 {
+    public function __construct(private ClientService $service) {}
+
     public function index()
     {
         $departments = Department::orderBy('name')->get();
 
-        $clients = Client::with(['department', 'city'])
-            ->when(request('search'), fn ($q, $s) => $q->where('first_name', 'ilike', "%{$s}%")
-                  ->orWhere('last_name', 'ilike', "%{$s}%")
-                  ->orWhere('phone', 'ilike', "%{$s}%")
-            )
-            ->when(request('department_id'), fn ($q, $d) => $q->where('department_id', $d)
-            )
-            ->when(request('city_id'), fn ($q, $c) => $q->where('city_id', $c)
-            )
-            ->when(request('active') !== null, fn ($q) => $q->where('active', filter_var(request('active'), FILTER_VALIDATE_BOOLEAN))
-            )
-            ->orderBy('first_name')
-            ->paginate(20)
-            ->withQueryString();
+        $clients = $this->service->paginate(20)->withQueryString();
 
         $total = Client::count();
 
@@ -58,7 +50,7 @@ class ClientController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
             'phone' => 'required|string|max:20|unique:clients,phone',
@@ -72,10 +64,9 @@ class ClientController extends Controller
             'city_id.required' => 'Debes seleccionar una ciudad.',
         ]);
 
-        Client::create($request->only(
-            'first_name', 'last_name', 'phone', 'email',
-            'address', 'department_id', 'city_id'
-        ) + ['active' => true]);
+        $validated['active'] = true;
+
+        $this->service->create(ClientDTO::fromRequest($validated));
 
         return redirect('/clients')->with('success', 'Cliente creado correctamente.');
     }
@@ -89,10 +80,10 @@ class ClientController extends Controller
 
     public function update(Request $request, Client $client)
     {
-        $request->validate([
+        $validated = $request->validate([
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
-            'phone' => 'required|string|max:20|unique:clients,phone,'.$client->id,
+            'phone' => ['required', 'string', 'max:20', Rule::unique('clients', 'phone')->ignore($client->id)],
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:255',
             'department_id' => 'required|exists:departments,id',
@@ -101,18 +92,16 @@ class ClientController extends Controller
             'phone.unique' => 'Este número ya pertenece a otro cliente registrado.',
         ]);
 
-        // Aseguramos que 'active' se capture correctamente del checkbox
-        $client->update($request->only(
-            'first_name', 'last_name', 'phone', 'email',
-            'address', 'department_id', 'city_id'
-        ) + ['active' => $request->boolean('active')]);
+        $validated['active'] = $request->boolean('active');
+
+        $this->service->update($client, ClientDTO::fromRequest($validated));
 
         return redirect('/clients')->with('success', 'Cliente actualizado.');
     }
 
     public function destroy(Client $client)
     {
-        $client->delete();
+        $this->service->delete($client);
 
         return redirect('/clients')->with('success', 'Cliente eliminado.');
     }
@@ -124,23 +113,7 @@ class ClientController extends Controller
 
     public function search(Request $request)
     {
-        $q = $request->get('q', '');
-
-        if (strlen($q) < 2) {
-            return response()->json([]);
-        }
-
-        $clients = Client::query()
-            ->where('active', true)
-            ->where(function ($query) use ($q) {
-                $query->where('first_name', 'ilike', "%{$q}%")
-                    ->orWhere('last_name', 'ilike', "%{$q}%")
-                    ->orWhere('phone', 'ilike', "%{$q}%");
-            })
-            ->with('city')
-            ->with('department')
-            ->limit(6)
-            ->get();
+        $clients = $this->service->search($request->get('q', ''));
 
         return response()->json(
             $clients->map(fn ($c) => [

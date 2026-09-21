@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
+    use HasFactory;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -15,6 +18,7 @@ class Product extends Model
         'pieces',
         'avg_production_days',
         'base_price',
+        'shipping_price',
         'photo',
         'active',
     ];
@@ -22,6 +26,7 @@ class Product extends Model
     protected $casts = [
         'active'             => 'boolean',
         'base_price'         => 'decimal:2',
+        'shipping_price'     => 'decimal:2',
         'pieces'             => 'integer',
         'avg_production_days'=> 'integer',
     ];
