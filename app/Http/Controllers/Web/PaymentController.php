@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Models\Payment;
-use App\Models\ProductionOrder;
+use App\Modules\Payments\DTOs\PaymentDTO;
+use App\Modules\Payments\Services\PaymentService;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
+    public function __construct(private PaymentService $service) {}
+
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'production_order_id' => 'required|exists:production_orders,id',
             'amount' => 'required|numeric|min:1',
             'type' => 'required|in:advance,partial,final',
@@ -21,45 +23,24 @@ class PaymentController extends Controller
             'paid_at' => 'nullable|date',
         ]);
 
-        $order = ProductionOrder::findOrFail($request->production_order_id);
-
-        $totalPaid = $order->payments()->sum('amount');
-        $balance = $order->price - $totalPaid;
-
-        if ($request->amount > $balance) {
-            return back()->withErrors(['error' => "El pago supera el saldo pendiente ($balance)."]);
+        try {
+            $payment = $this->service->create(
+                PaymentDTO::fromRequest($validated),
+                auth()->id()
+            );
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
 
-        $payment = Payment::create([
-            'production_order_id' => $order->id,
-            'amount' => $request->amount,
-            'type' => $request->type,
-            'payment_method' => $request->payment_method,
-            'notes' => $request->notes,
-            'paid_at' => $request->paid_at ?? now()->toDateString(),
-            'registered_by' => auth()->id(),
-        ]);
-
-        // Si saldo queda en 0 y orden está done, marcar como entregada
-        $newBalance = $balance - $request->amount;
-        if ($newBalance <= 0 && $order->status === 'done') {
-            $order->update(['status' => 'delivered']);
-        }
-
-        $order->refresh()->load(['client', 'product', 'payments']);
-
+        // El correo de confirmación es responsabilidad de este controlador
+        // (canal Web), no del PaymentService compartido — ver la nota en
+        // PaymentService::create() sobre por qué no vive ahí todavía.
+        $order = $payment->productionOrder->load(['client', 'product', 'payments']);
         $emailSent = MailService::orderPaymentRegistered($order, $payment);
-        
+
         $msg = 'Pago registrado correctamente.';
         $msg .= $emailSent ? ' Cliente notificado por correo.' : ' El cliente no tiene correo registrado.';
 
         return back()->with('success', $msg);
-    }
-
-    public function destroy(Payment $payment)
-    {
-        $payment->delete();
-
-        return back()->with('success', 'Pago eliminado.');
     }
 }

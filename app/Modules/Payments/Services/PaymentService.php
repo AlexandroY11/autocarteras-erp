@@ -18,16 +18,25 @@ class PaymentService
             ->each(fn ($p) => $p->append([]));
     }
 
+    /**
+     * NOTA (decisión consciente, Etapa 2 - Payments): este método NO envía
+     * ningún correo al cliente. La notificación por email de un pago
+     * registrado sigue siendo responsabilidad exclusiva del canal Web
+     * (ver App\Http\Controllers\Web\PaymentController::store()), porque
+     * hoy no existe ningún consumidor real escribiendo pagos vía esta API
+     * (n8n solo tiene la ability 'payments:read'). Cuando exista un
+     * consumidor real de escritura por API, se debe decidir explícitamente
+     * si también debe notificar — no asumirlo por defecto en ese momento.
+     */
     public function create(PaymentDTO $dto, int $userId): Payment
     {
         $order = ProductionOrder::findOrFail($dto->production_order_id);
 
-        // Validar que no se pague más de lo que falta
-        $totalPaid = $order->payments()->sum('amount');
-        $balance = $order->price - $totalPaid;
+        // Validar que no se pague más de lo que falta (envío + producto)
+        $totalBalance = $order->total_balance;
 
-        if ($dto->amount > $balance) {
-            throw new \Exception("El pago ({$dto->amount}) supera el saldo pendiente ({$balance}).", 422);
+        if ($dto->amount > $totalBalance) {
+            throw new \Exception("El pago ({$dto->amount}) supera el saldo pendiente ({$totalBalance}).", 422);
         }
 
         $payment = Payment::create([
@@ -35,30 +44,23 @@ class PaymentService
             'registered_by' => $userId,
         ]);
 
-        // Si el saldo queda en 0, marcar orden como entregada
-        $newBalance = $balance - $dto->amount;
-        if ($newBalance <= 0 && $order->status === 'done') {
-            $order->update(['status' => 'delivered']);
-        }
-
         return $payment->load('registeredBy');
-    }
-
-    public function delete(Payment $payment): void
-    {
-        $payment->delete();
     }
 
     public function summary(ProductionOrder $order): array
     {
-        $payments = $order->payments()->sum('amount');
-        $balance = $order->price - $payments;
+        $breakdown = $order->paymentBreakdown();
 
         return [
-            'price' => $order->price,
-            'total_paid' => $payments,
-            'balance' => $balance,
-            'is_paid' => $balance <= 0,
+            'price' => $breakdown->productPrice,
+            'shipping_price' => $breakdown->shippingPrice,
+            'total_paid' => $breakdown->totalPaid,
+            'shipping_paid' => $breakdown->shippingPaid,
+            'shipping_balance' => $breakdown->shippingBalance,
+            'product_paid' => $breakdown->productPaid,
+            'product_balance' => $breakdown->productBalance,
+            'total_balance' => $breakdown->totalBalance,
+            'is_paid' => $breakdown->totalBalance <= 0,
         ];
     }
 }

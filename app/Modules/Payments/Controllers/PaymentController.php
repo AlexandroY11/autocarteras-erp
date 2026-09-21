@@ -3,7 +3,6 @@
 namespace App\Modules\Payments\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Payment;
 use App\Models\ProductionOrder;
 use App\Modules\Payments\DTOs\PaymentDTO;
 use App\Modules\Payments\Services\PaymentService;
@@ -52,13 +51,5 @@ class PaymentController extends Controller
                 'message' => $e->getMessage(),
             ], $e->getCode() ?: 500);
         }
-    }
-
-    // DELETE /payments/{payment}
-    public function destroy(Payment $payment): JsonResponse
-    {
-        $this->service->delete($payment);
-
-        return response()->json(null, 204);
     }
 }
