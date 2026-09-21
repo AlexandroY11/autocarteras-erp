@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\OrderDispatch;
 use App\Models\ProductionOrder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,7 +16,8 @@ class OrderShippedMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public function __construct(
-        public ProductionOrder $order
+        public ProductionOrder $order,
+        public OrderDispatch $dispatch
     ) {}
 
     public function envelope(): Envelope
@@ -30,8 +32,9 @@ class OrderShippedMail extends Mailable implements ShouldQueue
         return new Content(
             view: 'emails.orders.shipped',
             with: [
-                'order'   => $this->order->load(['client.city', 'client.department', 'product', 'payments']),
-                'subject' => '¡Tu pedido va en camino!',
+                'order'    => $this->order->load(['client.city', 'client.department', 'product', 'payments']),
+                'dispatch' => $this->dispatch,
+                'subject'  => '¡Tu pedido fue despachado!',
             ],
         );
     }

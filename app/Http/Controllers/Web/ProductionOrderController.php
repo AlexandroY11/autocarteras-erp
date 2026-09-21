@@ -255,10 +255,14 @@ class ProductionOrderController extends Controller
 
         $msg = 'Etapa avanzada correctamente.';
 
-        if ($productionOrder->currentStage) {
-            $emailSent = MailService::orderStageChanged($productionOrder, $productionOrder->currentStage);
-            $msg .= $emailSent ? ' Cliente notificado por correo.' : ' El cliente no tiene correo registrado.';
-        }
+        // Pausado a propósito (decisión del producto, MVP — evitar saturar
+        // de correos a un cliente que recién empieza a operar con la app).
+        // MailService::orderStageChanged() sigue intacta para reactivar
+        // esto más adelante.
+        // if ($productionOrder->currentStage) {
+        //     $emailSent = MailService::orderStageChanged($productionOrder, $productionOrder->currentStage);
+        //     $msg .= $emailSent ? ' Cliente notificado por correo.' : ' El cliente no tiene correo registrado.';
+        // }
 
         return back()->with('success', $msg);
     }
@@ -279,12 +283,18 @@ class ProductionOrderController extends Controller
         $request->validate(['guide_number' => 'nullable|string|max:255']);
 
         try {
-            $this->dispatchService->dispatch($productionOrder, $request->guide_number, auth()->user());
+            $dispatch = $this->dispatchService->dispatch($productionOrder, $request->guide_number, auth()->user());
         } catch (\Exception $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
 
-        return back()->with('success', 'Orden despachada correctamente.');
+        $order = $productionOrder->refresh()->load(['client.city', 'client.department', 'product', 'payments']);
+        $emailSent = MailService::orderShipped($order, $dispatch);
+
+        $msg = 'Orden despachada correctamente.';
+        $msg .= $emailSent ? ' Cliente notificado por correo.' : ' El cliente no tiene correo registrado.';
+
+        return back()->with('success', $msg);
     }
 
     public function setGuideNumber(Request $request, ProductionOrder $productionOrder)

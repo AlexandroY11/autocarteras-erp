@@ -2,13 +2,13 @@
 
 @section('subject', $subject)
 
-@section('badge', '¡Tu Pedido Va en Camino!')
+@section('badge', '¡Tu Pedido Fue Despachado!')
 
 @section('content')
 
     <p class="greeting">¡Hola, {{ $order->client->first_name }}!</p>
     <p class="intro">
-        Excelentes noticias: tu cartera ya fue despachada y está en camino hacia ti.
+        Excelentes noticias: tu cartera ya fue despachada y pronto comenzará su recorrido hacia ti.
         Por favor ten a mano el saldo pendiente para el momento de la entrega.
     </p>
 
@@ -31,6 +31,12 @@
             <div class="order-row">
                 <span class="label">Calcomanía</span>
                 <span class="value">{{ $order->sticker_color ?? 'Sí' }}</span>
+            </div>
+            @endif
+            @if($dispatch->guide_number)
+            <div class="order-row">
+                <span class="label">Número de guía</span>
+                <span class="value">{{ $dispatch->guide_number }}</span>
             </div>
             @endif
             <div class="order-row">
