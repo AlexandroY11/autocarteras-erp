@@ -93,7 +93,7 @@ return [
     */
 
     'limiters' => [
-        'login' => null,
+        'login' => 'webauthn-login',
     ],
 
     /*

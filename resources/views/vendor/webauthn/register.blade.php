@@ -83,7 +83,7 @@
     <script src="https://unpkg.com/axios@1.2.6/dist/axios.min.js"></script>
 
     {{-- Librería WebAuthn --}}
-    <script src="{!! secure_asset('vendor/webauthn/webauthn.js') !!}"></script>
+    <script src="{!! asset('vendor/webauthn/webauthn.js') !!}"></script>
 
     <script>
       document.addEventListener('DOMContentLoaded', function () {
