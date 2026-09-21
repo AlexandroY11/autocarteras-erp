@@ -8,9 +8,8 @@
     
     <form method="POST" action="/production-orders/{{ $order->id }}" class="space-y-4" 
         x-data="{ 
-            sticker: {{ $order->sticker ? 'true' : 'false' }}, 
-            price: {{ $order->price }}, 
-            advance: {{ $order->advance_payment ?? 0 }},
+            sticker: {{ $order->sticker ? 'true' : 'false' }},
+            price: {{ $order->price }},
             departmentId: '{{ $order->client->department_id }}',
             cityId: '{{ $order->client->city_id }}',
             cities: [], 
@@ -30,12 +29,6 @@
                 }
             },
             
-            getBalance() {
-                const priceNum = parseFloat(this.price) || 0;
-                const advanceNum = parseFloat(this.advance) || 0;
-                return Math.max(0, priceNum - advanceNum);
-            },
-
             formatCurrency(value) {
                 return new Intl.NumberFormat('es-CO', {
                     style: 'currency',
@@ -172,28 +165,13 @@
                     </div>
                     @error('price') <p class="text-red-500 text-[10px] font-bold mt-1">{{ $message }}</p> @enderror
                 </div>
-
-
-                {{-- Adelanto / Abono --}}
-                <div>
-                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1 block">Abono Inicial</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-3 text-gray-400 text-sm">$</span>
-                        <input type="number" 
-                            name="advance_payment" 
-                            x-model.number="advance" 
-                            class="w-full border rounded-lg pl-7 pr-4 py-3 text-sm text-green-600 font-black focus:ring-2 focus:ring-blue-500 @error('advance_payment') border-red-500 @else border-gray-300 @enderror">
-                    </div>
-                    @error('advance_payment') <p class="text-red-500 text-[10px] font-bold mt-1">{{ $message }}</p> @enderror
-                </div>
             </div>
 
-
-            {{-- Cuadro de Saldo Pendiente --}}
+            {{-- Resumen de pagos (informativo, los pagos se gestionan desde el detalle de la orden) --}}
             <div class="bg-gray-900 rounded-2xl p-4 flex justify-between items-center shadow-lg border-t border-white/10">
                 <div>
-                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-black">Saldo a Cobrar</p>
-                    <p class="text-2xl font-black text-white" x-text="formatCurrency(getBalance())"></p>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-black">Saldo Producto</p>
+                    <p class="text-2xl font-black text-white" x-text="formatCurrency({{ $order->product_balance }})"></p>
                 </div>
                 <div class="text-right">
                     <span class="inline-flex items-center rounded-full bg-blue-500/20 px-3 py-1 text-[10px] font-black text-blue-400 uppercase tracking-tighter ring-1 ring-inset ring-blue-400/30">

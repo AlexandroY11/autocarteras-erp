@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'can:admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'admin'     => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'ability'   => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\NoCacheMiddleware::class,

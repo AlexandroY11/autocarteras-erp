@@ -10,9 +10,10 @@
             selectedClient: null, 
             clientSearch: '{{ old('client_phone') ? old('client_first_name').' '.old('client_last_name') : '' }}', 
             showDropdown: false, 
-            sticker: {{ old('sticker') ? 'true' : 'false' }}, 
-            price: {{ old('price', 0) }}, 
-            advance: {{ old('advance_payment', 30000) }}, 
+            sticker: {{ old('sticker') ? 'true' : 'false' }},
+            price: {{ old('price', 0) }},
+            shippingPrice: 0,
+            advance: {{ old('advance_payment', 0) }},
             departmentId: '{{ old('client_department', '') }}', 
             cityId: '{{ old('client_city', '') }}',
             cities: [], 
@@ -59,18 +60,17 @@
             }, 
             
             selectProduct(id) {
-                console.log('ID recibido:', id);
-
                 const products = {{ $products->map(fn($p) => [
                     'id' => $p->id,
-                    'price' => $p->base_price
+                    'price' => $p->base_price,
+                    'shipping_price' => $p->shipping_price,
                 ])->toJson() }};
 
                 const p = products.find(p => p.id == id);
 
                 if (p) {
                     this.price = parseFloat(p.price);
-                    console.log('Precio actualizado:', this.price);
+                    this.shippingPrice = p.shipping_price ? parseFloat(p.shipping_price) : 0;
                 } else {
                     console.error('Producto no encontrado en la lista');
                 }
@@ -136,10 +136,18 @@
                 this.dueDate = currentDate.toISOString().split('T')[0];
             },
             
-            getBalance() {
-                const priceNum = parseFloat(this.price) || 0;
-                const advanceNum = parseFloat(this.advance) || 0;
-                return Math.max(0, priceNum - advanceNum);
+            getBreakdown() {
+                const price = parseFloat(this.price) || 0;
+                const shipping = parseFloat(this.shippingPrice) || 0;
+                const advance = parseFloat(this.advance) || 0;
+
+                const shippingApplied = Math.min(advance, shipping);
+                const shippingBalance = Math.max(0, shipping - shippingApplied);
+
+                const productApplied = Math.min(Math.max(0, advance - shippingApplied), price);
+                const productBalance = Math.max(0, price - productApplied);
+
+                return { shipping, shippingBalance, price, productBalance };
             },
 
             formatCurrency(value) {
@@ -382,11 +390,21 @@
                 </div>
             </div>
 
+            {{-- Info de envío (solo si el producto tiene precio de envío) --}}
+            <div x-show="shippingPrice > 0" x-cloak
+                class="rounded-xl px-4 py-2.5 text-xs font-semibold"
+                :class="getBreakdown().shippingBalance > 0 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'">
+                <span x-text="'Envío: ' + formatCurrency(shippingPrice)"></span>
+                <span x-show="getBreakdown().shippingBalance > 0"
+                      x-text="' — Pendiente ' + formatCurrency(getBreakdown().shippingBalance)"></span>
+                <span x-show="getBreakdown().shippingBalance <= 0"> — Cubierto</span>
+            </div>
+
             {{-- Cuadro de Saldo Pendiente --}}
             <div class="bg-gray-900 rounded-2xl p-4 flex justify-between items-center shadow-lg border-t border-white/10">
                 <div>
-                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-black">Saldo a Cobrar</p>
-                    <p class="text-2xl font-black text-white" x-text="formatCurrency(getBalance())"></p>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-black">Saldo de Producto</p>
+                    <p class="text-2xl font-black text-white" x-text="formatCurrency(getBreakdown().productBalance)"></p>
                 </div>
                 <div class="text-right">
                     <span class="inline-flex items-center rounded-full bg-blue-500/20 px-3 py-1 text-[10px] font-black text-blue-400 uppercase tracking-tighter ring-1 ring-inset ring-blue-400/30">

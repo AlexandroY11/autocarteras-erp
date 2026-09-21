@@ -1,4 +1,3 @@
-// database/migrations/2024_01_01_000001_create_holidays_table.php
 <?php
 
 use Illuminate\Database\Migrations\Migration;
