@@ -51,16 +51,16 @@
             </div>
             <div class="order-row">
                 <span class="label">Saldo a pagar en entrega</span>
-                <span class="value" style="color: {{ $order->balance > 0 ? '#dc2626' : '#16a34a' }}">
-                    ${{ number_format($order->balance, 0, ',', '.') }}
+                <span class="value" style="color: {{ $order->product_balance > 0 ? '#dc2626' : '#16a34a' }}">
+                    ${{ number_format($order->product_balance, 0, ',', '.') }}
                 </span>
             </div>
         </div>
     </div>
 
-    @if($order->balance > 0)
+    @if($order->product_balance > 0)
     <div class="highlight-box">
-        Recuerda tener listo el pago de <strong>${{ number_format($order->balance, 0, ',', '.') }}</strong>
+        Recuerda tener listo el pago de <strong>${{ number_format($order->product_balance, 0, ',', '.') }}</strong>
         al momento de recibir tu pedido.
     </div>
     @endif

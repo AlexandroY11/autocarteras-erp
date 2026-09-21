@@ -64,6 +64,17 @@
                             class="w-full bg-gray-50 border-none rounded-2xl px-10 py-5 text-xl font-black text-blue-700 focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
+
+                {{-- Precio de envío --}}
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-2 tracking-wider">Precio de Envío</label>
+                    <div class="relative">
+                        <span class="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-gray-400">$</span>
+                        <input type="number" name="shipping_price" value="{{ old('shipping_price', $product->shipping_price) }}" step="1000"
+                            class="w-full bg-gray-50 border-none rounded-2xl px-10 py-5 text-xl font-black text-gray-700 focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <p class="text-xs text-gray-400 ml-2">Se aplica automáticamente antes que el precio del producto al registrar pagos.</p>
+                </div>
             </div>
         </div>
 

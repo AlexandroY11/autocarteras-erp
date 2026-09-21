@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'production_order_id',
+        'order_dispatch_id',
         'amount',
         'type',
         'payment_method',
@@ -30,5 +34,10 @@ class Payment extends Model
     public function registeredBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'registered_by');
+    }
+
+    public function orderDispatch(): BelongsTo
+    {
+        return $this->belongsTo(OrderDispatch::class);
     }
 }

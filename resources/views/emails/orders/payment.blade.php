@@ -15,7 +15,7 @@
     <div class="order-card">
         <div class="order-card-header">
             <span class="order-number">ORDEN #{{ str_pad($order->consecutive, 3, '0', STR_PAD_LEFT) }}</span>
-            @if($order->balance <= 0)
+            @if($order->total_balance <= 0)
                 <span class="order-status" style="background:#16a34a;">Pagado</span>
             @else
                 <span class="order-status">Pago parcial</span>
@@ -42,21 +42,21 @@
             </div>
             <div class="order-row">
                 <span class="label">Saldo pendiente</span>
-                <span class="value" style="color: {{ $order->balance > 0 ? '#dc2626' : '#16a34a' }}">
-                    ${{ number_format($order->balance, 0, ',', '.') }}
+                <span class="value" style="color: {{ $order->total_balance > 0 ? '#dc2626' : '#16a34a' }}">
+                    ${{ number_format($order->total_balance, 0, ',', '.') }}
                 </span>
             </div>
         </div>
     </div>
 
-    @if($order->balance <= 0)
+    @if($order->total_balance <= 0)
     <div class="highlight-box">
         <strong>¡Tu orden está completamente pagada!</strong>
         Gracias por tu confianza en AutoCarteras Cali.
     </div>
     @else
     <div class="highlight-box">
-        Aún tienes un saldo pendiente de <strong>${{ number_format($order->balance, 0, ',', '.') }}</strong>.
+        Aún tienes un saldo pendiente de <strong>${{ number_format($order->total_balance, 0, ',', '.') }}</strong>.
         Este valor se cobrará al momento de la entrega.
     </div>
     @endif

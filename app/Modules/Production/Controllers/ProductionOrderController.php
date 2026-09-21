@@ -28,7 +28,6 @@ class ProductionOrderController extends Controller
             'sticker_color'   => 'nullable|string|max:100',
             'observations'    => 'nullable|string',
             'price'           => 'required|numeric|min:0',
-            'advance_payment' => 'nullable|numeric|min:0',
             'due_date'        => 'required|date|after_or_equal:today',
         ]);
 
@@ -57,13 +56,29 @@ class ProductionOrderController extends Controller
             'sticker_color'   => 'nullable|string|max:100',
             'observations'    => 'nullable|string',
             'price'           => 'sometimes|required|numeric|min:0',
-            'advance_payment' => 'nullable|numeric|min:0',
             'due_date'        => 'sometimes|required|date',
         ]);
 
+        // Se mezclan los valores actuales con lo validado antes de construir
+        // el DTO — una edición parcial no debe reventar por falta de
+        // 'client_id'/'product_id'/'color'/'price'/'due_date', que el DTO
+        // exige sin valor por defecto. due_date/price se formatean a mano
+        // porque el modelo los expone como Carbon/string-decimal, no en el
+        // shape crudo que espera el DTO.
+        $current = [
+            'client_id'     => $productionOrder->client_id,
+            'product_id'    => $productionOrder->product_id,
+            'color'         => $productionOrder->color,
+            'sticker'       => $productionOrder->sticker,
+            'sticker_color' => $productionOrder->sticker_color,
+            'observations'  => $productionOrder->observations,
+            'price'         => (float) $productionOrder->price,
+            'due_date'      => $productionOrder->due_date->toDateString(),
+        ];
+
         $order = $this->service->update(
             $productionOrder,
-            ProductionOrderDTO::fromRequest($validated)
+            ProductionOrderDTO::fromRequest([...$current, ...$validated])
         );
 
         return response()->json($order);
@@ -75,35 +90,33 @@ class ProductionOrderController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        if (in_array($productionOrder->status, ['done', 'delivered', 'cancelled'])) {
+        if (in_array($productionOrder->status, ['done', 'cancelled'])) {
             return response()->json([
                 'message' => 'Esta orden no puede avanzar de etapa.'
             ], 422);
         }
 
-        $order = $this->service->advanceStage(
-            $productionOrder,
-            $request->user()->id,
-            $validated['notes'] ?? null
-        );
+        try {
+            $order = $this->service->advanceStage(
+                $productionOrder,
+                $request->user(),
+                $validated['notes'] ?? null
+            );
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 403);
+        }
 
         return response()->json($order);
     }
 
     public function cancel(ProductionOrder $productionOrder): JsonResponse
     {
-        if ($productionOrder->status === 'delivered') {
+        if (! in_array($productionOrder->dispatch_status, [null, 'pending_dispatch'], true)) {
             return response()->json([
-                'message' => 'No se puede cancelar una orden ya entregada.'
+                'message' => 'No se puede cancelar una orden que ya fue despachada.'
             ], 422);
         }
 
         return response()->json($this->service->cancel($productionOrder));
-    }
-
-    public function destroy(ProductionOrder $productionOrder): JsonResponse
-    {
-        $this->service->delete($productionOrder);
-        return response()->json(null, 204);
     }
 }

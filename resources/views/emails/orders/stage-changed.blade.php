@@ -37,13 +37,13 @@
             </div>
             @if($order->due_date)
             <div class="order-row">
-                <span class="label">Fecha estimada de entrega</span>
+                <span class="label">Fecha estimada de finalización de tu pedido</span>
                 <span class="value">{{ $order->due_date->format('d/m/Y') }}</span>
             </div>
             @endif
             <div class="order-row">
                 <span class="label">Saldo pendiente</span>
-                <span class="value">${{ number_format($order->balance, 0, ',', '.') }}</span>
+                <span class="value">${{ number_format($order->total_balance, 0, ',', '.') }}</span>
             </div>
         </div>
     </div>

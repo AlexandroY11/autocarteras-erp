@@ -20,7 +20,7 @@
                     </span>
                 @else
                     <span class="inline-flex text-xs font-bold bg-gray-100 text-gray-600 px-3 py-0.5 rounded-full">
-                        {{ ucfirst($order->status) }}
+                        {{ $order->status_label }}
                     </span>
                 @endif
             </div>
@@ -34,9 +34,9 @@
                 </a>
             @endif
             @if(
-                !in_array($order->status, ['done','delivered','cancelled'])
-                && $order->current_stage_id != 8
-            )                
+                !in_array($order->status, ['done','cancelled'])
+                && $order->current_stage_id !== \App\Models\Stage::enviadoId()
+            )
                 <form method="POST" action="/production-orders/{{ $order->id }}/advance-stage"
                     x-data="{}"
                     @submit="showAlert.confirm($event, '¿Avanzar a la siguiente etapa?', 'Sí, avanzar')">
@@ -52,21 +52,42 @@
     {{-- ================= RESUMEN FINANCIERO ================= --}}
     <div class="grid grid-cols-3 gap-3">
         <div class="bg-white border border-gray-100 rounded-2xl p-4">
-            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Total</p>
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Precio Producto</p>
             <p class="text-xl font-black text-blue-700">
                 ${{ number_format($order->price, 0, ',', '.') }}
             </p>
         </div>
         <div class="bg-white border border-gray-100 rounded-2xl p-4">
-            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Pagado</p>
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Precio Envío</p>
+            <p class="text-xl font-black text-blue-700">
+                ${{ number_format($order->shipping_price ?? 0, 0, ',', '.') }}
+            </p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-4">
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Total Recibido</p>
             <p class="text-xl font-black text-green-600">
                 ${{ number_format($order->total_paid, 0, ',', '.') }}
             </p>
         </div>
         <div class="bg-white border border-gray-100 rounded-2xl p-4">
-            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Saldo</p>
-            <p class="text-xl font-black {{ $order->balance > 0 ? 'text-red-600' : 'text-green-600' }}">
-                ${{ number_format($order->balance, 0, ',', '.') }}
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Aplicado a Envío</p>
+            <p class="text-xl font-black {{ $order->shipping_balance > 0 ? 'text-amber-600' : 'text-green-600' }}">
+                ${{ number_format($order->shipping_paid, 0, ',', '.') }}
+            </p>
+            @if($order->shipping_balance > 0)
+                <p class="text-[10px] text-amber-600 font-bold">Faltan ${{ number_format($order->shipping_balance, 0, ',', '.') }}</p>
+            @endif
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-4">
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Aplicado a Producto</p>
+            <p class="text-xl font-black text-gray-700">
+                ${{ number_format($order->product_paid, 0, ',', '.') }}
+            </p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-4">
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Saldo Producto</p>
+            <p class="text-xl font-black {{ $order->product_balance > 0 ? 'text-red-600' : 'text-green-600' }}">
+                ${{ number_format($order->product_balance, 0, ',', '.') }}
             </p>
         </div>
     </div>
@@ -86,7 +107,7 @@
                 <p class="font-bold text-gray-900">{{ $order->client->full_name }}</p>
                 <p class="text-xs text-gray-500">{{ $order->client->phone }}</p>
                 <p class="text-xs text-gray-400">
-                    {{ $order->client->address }}, {{ $order->client->city->name }}
+                    {{ $order->client->address }}{{ $order->client->city ? ', ' . $order->client->city->name : '' }}
                 </p>
             </div>
             <div>
@@ -106,7 +127,7 @@
             </div>
             <div>
                 <p class="text-[10px] text-gray-400 uppercase font-bold">Fecha compromiso</p>
-                <p class="font-bold {{ $order->due_date->isPast() && !in_array($order->status, ['delivered','done']) ? 'text-red-600' : 'text-gray-900' }}">
+                <p class="font-bold {{ $order->due_date->isPast() && $order->status !== 'done' ? 'text-red-600' : 'text-gray-900' }}">
                     {{ $order->due_date->format('d/m/Y') }}
                 </p>
             </div>
@@ -134,7 +155,7 @@
         </h2>
 
         {{-- FORM PAGO --}}
-        @if($order->balance > 0 && auth()->user()->isAdmin())
+        @if($order->total_balance > 0 && auth()->user()->isAdmin())
         <form method="POST" action="/payments"
             x-data="{ method: 'efectivo' }"
             @submit="showAlert.confirm($event, '¿Registrar este pago?', 'Sí, registrar')"
@@ -264,17 +285,6 @@
                         </p>
                     </div>
                 </div>
-
-                @if(auth()->user()->isAdmin())
-                    <form method="POST" action="/payments/{{ $payment->id }}">
-                        @csrf @method('DELETE')
-                        <button class="text-xs text-red-400 hover:text-red-600 transition cursor-pointer">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
-                            </svg>
-                        </button>
-                    </form>
-                @endif
             </div>
             @empty
                 <p class="text-xs text-gray-400 text-center py-4">Sin pagos registrados</p>
@@ -323,8 +333,121 @@
         </div>
     </div>
 
+    {{-- ================= DESPACHO / ENVÍO ================= --}}
+    @if(auth()->user()->isAdmin() && $order->status === 'done')
+    <div class="bg-white border border-gray-100 rounded-2xl p-5 space-y-4">
+        <h2 class="flex items-center gap-2 font-semibold text-gray-700 text-sm uppercase tracking-wide">
+            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5V14.25"/>
+            </svg>
+            Despacho / Envío
+        </h2>
+
+        @php $ds = $order->dispatch_status; $latestDispatch = $order->latestDispatch(); @endphp
+
+        @if($latestDispatch)
+            <div class="border border-gray-200 rounded-xl p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                    <label class="text-[10px] font-black text-gray-400 uppercase">Número de guía</label>
+                    @if($order->guide_number_missing)
+                        <span class="text-[10px] font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full uppercase">
+                            Sin guía
+                        </span>
+                    @endif
+                </div>
+                <form method="POST" action="/production-orders/{{ $order->id }}/guide-number" class="flex gap-2">
+                    @csrf
+                    <input type="text" name="guide_number" value="{{ $latestDispatch->guide_number }}"
+                           placeholder="Ej: 123456789"
+                           class="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <button type="submit" class="bg-gray-800 text-white text-sm px-4 rounded-xl font-semibold cursor-pointer">
+                        Guardar
+                    </button>
+                </form>
+            </div>
+        @endif
+
+        @if($ds === 'pending_dispatch')
+            @if($order->shipping_balance > 0)
+                <p class="text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3">
+                    No se puede despachar: falta cubrir el envío (saldo de envío ${{ number_format($order->shipping_balance, 0, ',', '.') }}).
+                </p>
+            @else
+                <form method="POST" action="/production-orders/{{ $order->id }}/dispatch"
+                    x-data="{}"
+                    @submit="showAlert.confirm($event, '¿Despachar esta orden?', 'Sí, despachar')"
+                    class="space-y-3">
+                    @csrf
+                    @if($order->product_balance > 0)
+                        <p class="text-xs text-gray-500">Recaudo a cobrar en la entrega: <strong>${{ number_format($order->product_balance, 0, ',', '.') }}</strong></p>
+                    @else
+                        <p class="text-xs text-gray-500">Producto pagado en su totalidad — se despacha sin recaudo.</p>
+                    @endif
+                    <p class="text-xs text-gray-400">El número de guía se asigna después, por separado.</p>
+                    <button type="submit" class="w-full bg-blue-700 text-white text-sm py-3 rounded-xl font-semibold cursor-pointer">
+                        Despachar
+                    </button>
+                </form>
+            @endif
+        @elseif($ds === 'dispatched')
+            <form method="POST" action="/production-orders/{{ $order->id }}/mark-sent"
+                x-data="{}"
+                @submit="showAlert.confirm($event, '¿Marcar como en tránsito?', 'Sí, marcar')">
+                @csrf
+                <button type="submit" class="w-full bg-blue-700 text-white text-sm py-3 rounded-xl font-semibold cursor-pointer">
+                    Marcar en tránsito
+                </button>
+            </form>
+            <form method="POST" action="/production-orders/{{ $order->id }}/mark-returned"
+                x-data="{ reason: '' }"
+                @submit="showAlert.confirm($event, '¿Registrar devolución de esta guía?', 'Sí, devolver')"
+                class="space-y-2">
+                @csrf
+                <input type="text" name="return_reason" x-model="reason" required placeholder="Motivo de la devolución"
+                       class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <button type="submit" class="w-full border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm py-2.5 rounded-xl font-semibold cursor-pointer">
+                    Registrar devolución
+                </button>
+            </form>
+        @elseif($ds === 'sent')
+            <p class="text-sm text-blue-700 bg-blue-50 rounded-xl px-4 py-3">En tránsito hacia el cliente.</p>
+            <form method="POST" action="/production-orders/{{ $order->id }}/mark-delivered"
+                x-data="{}"
+                @submit="showAlert.confirm($event, '¿Marcar como entregado?', 'Sí, entregado')">
+                @csrf
+                <button type="submit" class="w-full bg-green-600 text-white text-sm py-3 rounded-xl font-semibold cursor-pointer">
+                    Marcar entregado
+                </button>
+            </form>
+            <form method="POST" action="/production-orders/{{ $order->id }}/mark-returned"
+                x-data="{ reason: '' }"
+                @submit="showAlert.confirm($event, '¿Registrar devolución de esta guía?', 'Sí, devolver')"
+                class="space-y-2">
+                @csrf
+                <input type="text" name="return_reason" x-model="reason" required placeholder="Motivo de la devolución"
+                       class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <button type="submit" class="w-full border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm py-2.5 rounded-xl font-semibold cursor-pointer">
+                    Registrar devolución
+                </button>
+            </form>
+        @elseif($ds === 'delivered')
+            <p class="text-sm text-green-700 bg-green-50 rounded-xl px-4 py-3 font-semibold">Entregado.</p>
+        @elseif($ds === 'returned')
+            <p class="text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3">Devuelto — requiere revisión antes de reintentar el envío.</p>
+            <form method="POST" action="/production-orders/{{ $order->id }}/return-to-pending-dispatch"
+                x-data="{}"
+                @submit="showAlert.confirm($event, '¿Dejar la orden lista para un nuevo despacho?', 'Sí, listo')">
+                @csrf
+                <button type="submit" class="w-full bg-blue-700 text-white text-sm py-3 rounded-xl font-semibold cursor-pointer">
+                    Listo para nuevo despacho
+                </button>
+            </form>
+        @endif
+    </div>
+    @endif
+
     {{-- ================= CANCELAR ================= --}}
-    @if(auth()->user()->isAdmin() && !in_array($order->status, ['delivered','cancelled']))
+    @if(auth()->user()->isAdmin() && in_array($order->dispatch_status, [null, 'pending_dispatch'], true) && $order->status !== 'cancelled')
         <form method="POST"
             action="/production-orders/{{ $order->id }}/cancel"
             x-data="{}"
