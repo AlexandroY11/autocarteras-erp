@@ -42,6 +42,12 @@ COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 RUN mkdir -p /etc/supervisor.d/
 COPY docker/supervisor.conf /etc/supervisor.d/laravel.ini
 
+# El worker de cola (docker/queue-worker.conf) NO se copia aquí a propósito
+# — el entrypoint lo activa condicionalmente según RUN_QUEUE_WORKER, para
+# que la misma imagen sirva dev (sin worker) y producción (con worker).
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+CMD ["/entrypoint.sh"]
