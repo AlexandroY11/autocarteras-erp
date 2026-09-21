@@ -253,14 +253,20 @@
                         @error('client_last_name') <p class="text-red-500 text-[10px] font-bold mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
-                <div> 
-                    <label class="text-xs font-bold text-gray-400 uppercase">Teléfono / WhatsApp *</label> 
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase">Teléfono / WhatsApp *</label>
                     <input type="text" name="client_phone" value="{{ old('client_phone') }}"
                             class="w-full border rounded-lg px-3 py-2 text-sm @error('client_phone') border-red-500 @else border-gray-300 @enderror">
                     @error('client_phone') <p class="text-red-500 text-[10px] font-bold mt-1">{{ $message }}</p> @enderror
                 </div>
-                <div> 
-                    <label class="text-xs font-bold text-gray-400 uppercase">Dirección *</label> 
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase">Correo</label>
+                    <input type="email" name="client_email" value="{{ old('client_email') }}"
+                            class="w-full border rounded-lg px-3 py-2 text-sm @error('client_email') border-red-500 @else border-gray-300 @enderror">
+                    @error('client_email') <p class="text-red-500 text-[10px] font-bold mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase">Dirección *</label>
                     <input type="text" name="client_address" value="{{ old('client_address') }}"
                             placeholder="Calle 123 # 45-67"
                             class="w-full border rounded-lg px-3 py-2 text-sm @error('client_address') border-red-500 @else border-gray-300 @enderror">
