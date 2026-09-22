@@ -1,7 +1,28 @@
 @php
     $nextStageName = $order->nextStage()?->name ?? 'Finalizado';
     $confirmText = "¿Confirmas que terminaste {$order->product->name} en " . optional($order->currentStage)->name . "?";
-    $cityName = optional(optional($order->client)->city)->name;
+
+    // Solo los campos que el cliente realmente tiene — nunca se rellena con
+    // un placeholder tipo "Ciudad no registrada".
+    $locationParts = array_filter([
+        optional(optional($order->client)->city)->name,
+        optional(optional($order->client)->department)->name,
+    ]);
+    $locationText = implode(', ', $locationParts);
+
+    // Colores del badge de estado de despacho, cuando la producción ya
+    // terminó (current_stage_id null) — mismo mapeo que orders/index.blade.php,
+    // no hay un color centralizado en el modelo (solo DISPATCH_STATUS_LABELS
+    // para el texto). En la práctica esto solo se ve cuando Admin mira
+    // day-detail.blade.php: Worker/Director nunca llegan a este branch,
+    // porque su query ya filtra por currentStage no nulo.
+    $dispatchStatusColors = [
+        'pending_dispatch' => 'bg-amber-500',
+        'dispatched'       => 'bg-indigo-500',
+        'sent'             => 'bg-blue-500',
+        'delivered'        => 'bg-green-500',
+        'returned'         => 'bg-red-500',
+    ];
 @endphp
 <div
     data-swipeable
@@ -40,10 +61,16 @@
             </h2>
             <p class="text-base text-gray-500">
                 {{ optional($order->client)->full_name }}
-                @if($cityName)
-                    · {{ $cityName }}
-                @endif
             </p>
+            @if($locationText)
+                <p class="text-sm text-gray-400 flex items-center gap-1.5 mt-0.5">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                    </svg>
+                    {{ $locationText }}
+                </p>
+            @endif
         </div>
 
         <div class="flex flex-wrap items-center gap-3 text-base text-gray-700">
@@ -74,10 +101,29 @@
                       style="background: {{ $order->currentStage->color }}">
                     {{ $order->currentStage->name }}
                 </span>
-            @else
-                <span class="text-base bg-gray-100 text-gray-600 px-4 py-2 rounded-full shrink-0">
-                    Sin etapa
+            @elseif($order->status === 'cancelled')
+                {{-- Cancelada después de terminar producción (dispatch_status
+                     sigue en pending_dispatch por la guarda de cancel()) — mostrar
+                     "Terminado" ahí sería falso, así que se omite el badge de
+                     despacho por completo. --}}
+                <span class="text-base font-bold text-white px-4 py-2 rounded-full shrink-0 bg-red-500">
+                    Cancelado
                 </span>
+            @else
+                {{-- max-w + sin whitespace-nowrap: "Pendiente de despacho" no
+                     cabe en una sola línea del ancho del pill — con shrink-0
+                     solo (sin tope de ancho) se salía de la card entera en
+                     vez de envolver. --}}
+                <div class="flex flex-col items-end gap-1 shrink-0 max-w-[140px]">
+                    <span class="text-sm font-bold text-white px-3 py-1 rounded-full bg-green-500">
+                        Terminado
+                    </span>
+                    @if($order->dispatch_status)
+                        <span class="text-sm font-bold text-white px-3 py-1 rounded-full text-center leading-tight {{ $dispatchStatusColors[$order->dispatch_status] ?? 'bg-gray-400' }}">
+                            {{ $order->dispatch_status_label }}
+                        </span>
+                    @endif
+                </div>
             @endif
         </div>
 

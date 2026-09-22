@@ -1,8 +1,9 @@
 <x-app-layout title="Órdenes">
     <div class="pt-4 space-y-5">
 
-        {{-- HEADER --}}
-        <div class="flex justify-between items-end">
+        {{-- HEADER — en columna en móvil (los 3 botones ya no caben en una
+             sola fila junto al título sin desbordarse), en fila desde sm --}}
+        <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-end">
             <div>
                 <h1 class="text-3xl font-black text-gray-900 tracking-tight">Órdenes</h1>
                 <p class="text-sm font-medium text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded-lg mt-1">
@@ -10,16 +11,25 @@
                 </p>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
                 {{-- Botón Calendario --}}
                 <a href="/production-orders/calendar"
                 class="flex items-center gap-2 bg-indigo-600 text-white font-bold px-4 py-2.5 rounded-2xl text-sm shadow-md shadow-indigo-100 active:scale-95 transition-all">
-                    
+
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 9v7.5m-9 3.75h.008v.008H12v-.008Z" />
                     </svg>
 
                     Calendario
+                </a>
+
+                {{-- Acceso directo al reporte "Seguimiento operativo" --}}
+                <a href="/reports/operational"
+                class="flex items-center gap-2 bg-gray-800 text-white font-bold px-4 py-2.5 rounded-2xl text-sm shadow-md shadow-gray-200 active:scale-95 transition-all">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664M6.75 7.5h10.5" />
+                    </svg>
+                    Seguimiento
                 </a>
 
                 {{-- Tu botón Nueva (ya existente) --}}
@@ -125,6 +135,18 @@
                 @php $lastGroup = $currentGroup; @endphp
             @endif
             @php
+                // Colores del badge de estado de despacho, cuando la producción
+                // ya terminó (current_stage_id null) — no hay un color
+                // centralizado en el modelo (solo DISPATCH_STATUS_LABELS para
+                // el texto), así que vive aquí.
+                $dispatchStatusColors = [
+                    'pending_dispatch' => ['dot' => 'bg-amber-500', 'text' => 'text-amber-600'],
+                    'dispatched'       => ['dot' => 'bg-indigo-500', 'text' => 'text-indigo-600'],
+                    'sent'             => ['dot' => 'bg-blue-500', 'text' => 'text-blue-600'],
+                    'delivered'        => ['dot' => 'bg-green-500', 'text' => 'text-green-600'],
+                    'returned'         => ['dot' => 'bg-red-500', 'text' => 'text-red-600'],
+                ];
+
                 $isDispatchPhase = $order->status === 'done';
 
                 if (!$isDispatchPhase) {
@@ -197,6 +219,15 @@
                         </div>
 
                         {{-- PRODUCTO Y CLIENTE --}}
+                        @php
+                            // Solo los campos que el cliente realmente tiene — nunca se
+                            // rellena con un placeholder tipo "Ciudad no registrada".
+                            $locationParts = array_filter([
+                                optional($order->client->city)->name,
+                                optional($order->client->department)->name,
+                            ]);
+                            $locationText = implode(', ', $locationParts);
+                        @endphp
                         <div class="flex flex-col justify-center px-5 py-4 flex-1 gap-0.5">
                             <p class="text-lg font-medium text-gray-900">{{ $order->product->name }}</p>
                             <p class="text-sm text-gray-400 flex items-center gap-1.5">
@@ -207,19 +238,58 @@
                                 <span class="text-gray-300">·</span>
                                 {{ $order->client->phone }}
                             </p>
+                            @if($locationText)
+                                <p class="text-sm text-gray-400 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                                    </svg>
+                                    {{ $locationText }}
+                                </p>
+                            @endif
                         </div>
 
                         {{-- ETAPA --}}
-                        <div class="flex items-center gap-2 px-3 py-4 border-l border-gray-100 shrink-0 max-w-[120px]">
+                        <div class="flex flex-col items-end justify-center gap-1 px-3 py-4 border-l border-gray-100 shrink-0 w-[150px]">
                             @if($order->currentStage)
-                                <span class="w-2.5 h-2.5 rounded-full shrink-0"
-                                    style="background: {{ $order->currentStage->color }}"></span>
-                                <span class="text-sm font-medium truncate" style="color: {{ $order->currentStage->color }}">
-                                    {{ $order->currentStage->name }}
-                                </span>
+                                <div class="flex items-center gap-2 w-full min-w-0 justify-end">
+                                    <span class="w-2.5 h-2.5 rounded-full shrink-0"
+                                        style="background: {{ $order->currentStage->color }}"></span>
+                                    <span class="text-sm font-medium truncate" style="color: {{ $order->currentStage->color }}">
+                                        {{ $order->currentStage->name }}
+                                    </span>
+                                </div>
+                            @elseif($order->status === 'cancelled')
+                                {{-- Cancelada después de terminar producción (dispatch_status
+                                     sigue en pending_dispatch por la guarda de cancel()) — mostrar
+                                     "Terminado" ahí sería falso, así que se omite la línea de
+                                     despacho por completo. --}}
+                                <div class="flex items-center gap-2 w-full min-w-0 justify-end">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
+                                    <span class="text-sm font-medium text-red-600">Cancelado</span>
+                                </div>
                             @else
-                                <span class="w-2.5 h-2.5 rounded-full bg-gray-300 shrink-0"></span>
-                                <span class="text-sm font-medium text-gray-400">Sin etapa</span>
+                                <div class="flex items-center gap-2 w-full min-w-0 justify-end">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0"></span>
+                                    <span class="text-sm font-medium text-green-600">Terminado</span>
+                                </div>
+                                @if($order->dispatch_status)
+                                    @php
+                                        $dsColor = $dispatchStatusColors[$order->dispatch_status]
+                                            ?? ['dot' => 'bg-gray-300', 'text' => 'text-gray-500'];
+                                    @endphp
+                                    {{-- Sin truncate a propósito: "Pendiente de despacho" no
+                                         cabe en una sola línea a este ancho — mejor que haga
+                                         wrap a 2 líneas que perder texto con "...". El dot
+                                         queda arriba (items-start) para no quedar descentrado
+                                         si el texto sí llega a envolver. --}}
+                                    <div class="flex items-start gap-2 w-full min-w-0 justify-end">
+                                        <span class="w-2.5 h-2.5 rounded-full {{ $dsColor['dot'] }} shrink-0 mt-1"></span>
+                                        <span class="text-sm font-medium {{ $dsColor['text'] }} text-right leading-tight">
+                                            {{ $order->dispatch_status_label }}
+                                        </span>
+                                    </div>
+                                @endif
                             @endif
                         </div>
 
@@ -233,46 +303,55 @@
                         </div>
                     @endif
 
-                    {{-- FILA INFERIOR --}}
-                    <div class="flex items-center flex-wrap border-t border-gray-100">
+                    {{-- FILA DE ATRIBUTOS DEL PEDIDO (color / calcomanía / piezas) —
+                         chips con fondo suave, mismo lenguaje visual que ya usa
+                         orders/partials/task-card.blade.php para Worker/Director,
+                         en vez de una barra con separadores verticales tipo tabla. --}}
+                    <div class="flex items-center flex-wrap gap-2 px-5 py-3 border-t border-gray-100">
 
                         {{-- COLOR --}}
-                        <div class="flex items-center gap-2 px-[18px] py-3 text-sm text-gray-600 border-r border-gray-100">
+                        <span class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl text-sm font-medium text-gray-600">
                             <span class="w-3 h-3 rounded-full border border-gray-300 shrink-0"
                                 style="background: {{ $order->color }}"></span>
                             {{ $order->color }}
-                        </div>
+                        </span>
 
                         {{-- CALCOMANÍAS --}}
                         @if($order->sticker_color)
-                            <div class="flex items-center gap-2 px-[18px] py-3 text-sm font-medium text-amber-700 bg-amber-50 border-r border-amber-200">
+                            <span class="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-2xl text-sm font-medium text-amber-700">
                                 <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L9.568 3z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>
                                 </svg>
                                 Calcomanía {{ $order->sticker_color }}
-                            </div>
+                            </span>
                         @else
-                            <div class="flex items-center gap-2 px-[18px] py-3 text-sm text-gray-400 border-r border-gray-100">
+                            <span class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl text-sm font-medium text-gray-400">
                                 <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L9.568 3z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>
                                 </svg>
                                 Sin calcomanías
-                            </div>
+                            </span>
                         @endif
 
                         {{-- PIEZAS --}}
-                        <div class="flex items-center gap-2 px-[18px] py-3 text-sm text-gray-600 border-r border-gray-100">
+                        <span class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl text-sm font-medium text-gray-600">
                             <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
                             </svg>
                             {{ $order->product->pieces ?? 0 }} piezas
-                        </div>
+                        </span>
+                    </div>
+
+                    {{-- FILA DE SEGUIMIENTO Y DINERO — separada de la fila de
+                         atributos de arriba para que cada una tenga su propio
+                         propósito claro, en vez de compartir una sola barra. --}}
+                    <div class="flex items-start justify-between flex-wrap gap-3 px-5 py-3 border-t border-gray-100">
 
                         {{-- INDICADOR DE TIEMPO Y FECHA --}}
-                        <div class="flex flex-col items-end gap-1 px-[18px] py-3 border-r border-gray-100">
-                            
+                        <div class="flex flex-col gap-1">
+
                             {{-- Badge de Estado --}}
                             @php
                                 $statusColors = [
@@ -284,7 +363,7 @@
                                     'no_date'   => 'bg-gray-50 text-gray-400',
                                     'unknown'   => 'bg-gray-50 text-gray-400',
                                 ];
-                                
+
                                 $statusLabels = [
                                     'completed' => 'Completado',
                                     'overdue'   => 'Retrasado',
@@ -298,7 +377,7 @@
                                 $timeStatus = $order->time_status;
                             @endphp
 
-                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md {{ $statusColors[$timeStatus] ?? '' }}">
+                            <span class="self-start px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md {{ $statusColors[$timeStatus] ?? '' }}">
                                 {{ $statusLabels[$timeStatus] ?? 'N/A' }}
                             </span>
 
@@ -311,7 +390,7 @@
                                     </svg>
                                     {{ $order->due_date->format('d/m/Y') }}
                                 </div>
-                                
+
                                 {{-- Mostrar días de holgura si está en proceso --}}
                                 @if(!in_array($timeStatus, ['completed', 'overdue', 'no_date']))
                                     <span class="text-[11px] text-gray-400">
@@ -326,11 +405,11 @@
                              pero el gate vive aquí, en el dato, no en "quién llega a la
                              ruta hoy" — si el branching cambia mañana, esto ya está listo. --}}
                         @if(auth()->user()->isAdmin())
-                        <div class="w-full flex flex-row items-center justify-between px-[18px] py-3 border-t border-gray-100 sm:w-auto sm:ml-auto sm:flex-col sm:items-end sm:border-t-0">
+                        <div class="flex flex-col items-end gap-0.5">
                             @php $balance = $order->product_balance; @endphp
 
                             <span class="text-base font-medium text-gray-900">
-                                ${{ number_format($balance > 0 ? $order->price : $order->price, 0, ',', '.') }}
+                                ${{ number_format($order->price, 0, ',', '.') }}
                             </span>
 
                             @if($balance > 0)

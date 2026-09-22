@@ -386,7 +386,7 @@ class ProductionOrderController extends Controller
     {
         $user = auth()->user();
 
-        $orders = ProductionOrder::with(['client.city', 'product', 'currentStage', 'payments'])
+        $orders = ProductionOrder::with(['client.city', 'client.department', 'product', 'currentStage', 'payments'])
             ->whereDate('due_date', $date)
             // FILTRO: Excluir órdenes canceladas
             ->where('status', '!=', 'cancelled')

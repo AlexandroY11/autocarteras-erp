@@ -16,7 +16,7 @@ class OrderController extends Controller
         // etapas que el usuario puede avanzar) — swipe-to-advance, con
         // cliente/ciudad visibles pero sin nada financiero (sección 21).
         if ($user->isOperative()) {
-            $myOrders = ProductionOrder::with(['client.city', 'product', 'currentStage'])
+            $myOrders = ProductionOrder::with(['client.city', 'client.department', 'product', 'currentStage'])
                 ->whereNotIn('status', ['done', 'cancelled'])
                 ->whereHas('currentStage', fn ($q) => $q->whereIn('id', $user->skills->pluck('id')))
                 ->orderBy('due_date')
@@ -28,7 +28,7 @@ class OrderController extends Controller
         // Admin ve todo
         $stages = Stage::where('active', true)->orderBy('order')->get();
 
-        $orders = ProductionOrder::with(['client', 'product', 'currentStage', 'payments'])
+        $orders = ProductionOrder::with(['client.city', 'client.department', 'product', 'currentStage', 'payments'])
             ->where('status', '!=', 'cancelled')
             ->where(fn ($q) => $q->whereNull('dispatch_status')->orWhere('dispatch_status', '!=', 'delivered'))
             ->when(request('stage'), fn ($q, $s) => $q->where('current_stage_id', $s))
