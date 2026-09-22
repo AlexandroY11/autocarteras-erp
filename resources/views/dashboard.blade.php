@@ -147,6 +147,117 @@
         </div>
     </div>
 
+    {{-- WIDGETS NUEVOS — solo Admin (sección 21), mismo criterio que Ingresos
+         del Mes / Cartera Total: el dato ni se calcula si no aplica. --}}
+    @if($topProducts !== null)
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {{-- TOP PRODUCTOS MÁS VENDIDOS --}}
+        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+            <h3 class="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
+                <span class="w-2 h-6 bg-emerald-600 rounded-full"></span>
+                Top Productos Más Vendidos
+            </h3>
+            <div class="space-y-4">
+                @forelse($topProducts as $product)
+                <div>
+                    <div class="flex justify-between text-sm font-bold mb-1">
+                        <span class="text-gray-700">{{ $product->name }}</span>
+                        <span class="text-emerald-600">{{ $product->orders_count }} órdenes</span>
+                    </div>
+                    <div class="w-full bg-gray-50 rounded-full h-2">
+                        <div class="bg-emerald-600 h-2 rounded-full"
+                             style="width: {{ $topProducts->max('orders_count') > 0 ? ($product->orders_count / $topProducts->max('orders_count')) * 100 : 0 }}%"></div>
+                    </div>
+                </div>
+                @empty
+                <p class="text-sm font-bold text-gray-400">Sin datos todavía.</p>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- MÉTODOS DE PAGO MÁS USADOS --}}
+        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+            <h3 class="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
+                <span class="w-2 h-6 bg-fuchsia-600 rounded-full"></span>
+                Métodos de Pago Más Usados
+            </h3>
+            <div class="space-y-4">
+                @forelse($paymentMethodBreakdown as $row)
+                <div>
+                    <div class="flex justify-between text-sm font-bold mb-1">
+                        <span class="text-gray-700 capitalize">{{ $row->payment_method }}</span>
+                        <span class="text-fuchsia-600">{{ $row->total }} pagos</span>
+                    </div>
+                    <div class="w-full bg-gray-50 rounded-full h-2">
+                        <div class="bg-fuchsia-600 h-2 rounded-full"
+                             style="width: {{ $paymentMethodBreakdown->max('total') > 0 ? ($row->total / $paymentMethodBreakdown->max('total')) * 100 : 0 }}%"></div>
+                    </div>
+                </div>
+                @empty
+                <p class="text-sm font-bold text-gray-400">Sin datos todavía.</p>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {{-- TASA DE DEVOLUCIÓN --}}
+        <div class="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-orange-50/50 rounded-full -mr-16 -mt-16"></div>
+            <div class="relative">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-100">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                        </svg>
+                    </div>
+                    <h2 class="text-sm font-black text-gray-900 uppercase tracking-wider">Tasa de Devolución</h2>
+                </div>
+                <p class="text-3xl font-black text-orange-600">{{ $returnRate ?? '—' }}{{ $returnRate !== null ? '%' : '' }}</p>
+                <p class="text-xs font-bold text-gray-400 mt-1">Histórico de todos los despachos</p>
+            </div>
+        </div>
+    </div>
+
+    {{-- GUÍA PENDIENTE HACE MÁS DE 3 DÍAS --}}
+    <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-black text-gray-900 flex items-center gap-2">
+                <span class="w-2 h-6 bg-amber-500 rounded-full"></span>
+                Guía Pendiente Hace Más de 3 Días
+            </h3>
+        </div>
+        <div class="space-y-3">
+            @forelse($pendingGuides as $dispatch)
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-3xl">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+                        <span class="text-amber-600 font-black text-lg">!</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-black text-gray-900 leading-none mb-1">
+                            {{ optional($dispatch->productionOrder->client)->full_name }}
+                        </p>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-tighter">
+                            Orden #{{ str_pad($dispatch->productionOrder->consecutive, 3, '0', STR_PAD_LEFT) }}
+                            · Despachado {{ $dispatch->dispatched_at->diffForHumans() }}
+                        </p>
+                    </div>
+                </div>
+                <a href="/production-orders/{{ $dispatch->production_order_id }}"
+                   class="text-xs font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg">
+                    Ver orden
+                </a>
+            </div>
+            @empty
+            <div class="text-center py-6">
+                <p class="text-sm font-bold text-gray-400">No hay guías atrasadas ahora mismo.</p>
+            </div>
+            @endforelse
+        </div>
+    </div>
+    @endif
+
     {{-- ÓRDENES EN ETAPAS QUE PUEDES TRABAJAR (aproximado por habilidad) --}}
     @if($hasWorkableSkills)
     <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
