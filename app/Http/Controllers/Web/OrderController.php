@@ -19,6 +19,7 @@ class OrderController extends Controller
             $myOrders = ProductionOrder::with(['client.city', 'client.department', 'product', 'currentStage'])
                 ->whereNotIn('status', ['done', 'cancelled'])
                 ->whereHas('currentStage', fn ($q) => $q->whereIn('id', $user->skills->pluck('id')))
+                ->search(request('search'))
                 ->orderBy('due_date')
                 ->get();
 
