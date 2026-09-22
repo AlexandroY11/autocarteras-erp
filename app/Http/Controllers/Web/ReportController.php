@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Exports\ClientsReportExport;
 use App\Exports\Concerns\HasDueDateTracking;
 use App\Exports\FinancialFullReportExport;
 use App\Exports\OperationalFollowupReportExport;
+use App\Exports\ProductsReportExport;
 use App\Http\Controllers\Controller;
 use App\Models\ProductionOrder;
 use Illuminate\Http\Request;
@@ -44,6 +46,40 @@ class ReportController extends Controller
         return Excel::download(
             new OperationalFollowupReportExport(),
             'reporte-seguimiento-operativo-' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    public function clients(Request $request)
+    {
+        abort_unless(auth()->user()->isAdmin(), 403);
+
+        $validated = $request->validate([
+            'department_id' => 'nullable|exists:departments,id',
+            'city_id' => 'nullable|exists:cities,id',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+            'active' => 'nullable|in:0,1',
+        ]);
+
+        return Excel::download(
+            new ClientsReportExport(
+                $validated['department_id'] ?? null,
+                $validated['city_id'] ?? null,
+                $validated['from'] ?? null,
+                $validated['to'] ?? null,
+                isset($validated['active']) ? (bool) $validated['active'] : null,
+            ),
+            'reporte-clientes-' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    public function products()
+    {
+        abort_unless(auth()->user()->isAdmin(), 403);
+
+        return Excel::download(
+            new ProductsReportExport(),
+            'reporte-productos-' . now()->format('Y-m-d') . '.xlsx'
         );
     }
 

@@ -18,6 +18,13 @@
                 Filtros
                 <span x-show="{{ request()->hasAny(['search', 'pieces']) ? 'true' : 'false' }}" class="w-2 h-2 bg-blue-600 rounded-full"></span>
             </button>
+            <a href="/reports/products"
+                class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 font-bold px-4 py-2.5 rounded-2xl text-sm active:scale-95 transition-all shadow-sm">
+                <svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Excel
+            </a>
             <a href="/products/create"
                 class="flex items-center gap-2 bg-blue-700 text-white font-bold px-4 py-2.5 rounded-2xl text-sm active:scale-95 transition-all shadow-md shadow-blue-100">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">

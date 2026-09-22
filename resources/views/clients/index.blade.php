@@ -1,5 +1,5 @@
 <x-app-layout title="Clientes">
-<div class="pt-4 space-y-5" x-data="{ showFilters: false }">
+<div class="pt-4 space-y-5" x-data="{ showFilters: false, showExport: false }">
 
     {{-- 1. HEADER & RESUMEN --}}
     <div class="flex justify-between items-end">
@@ -10,13 +10,20 @@
             </p>
         </div>
         <div class="flex gap-2">
-            <button @click="showFilters = !showFilters" 
+            <button @click="showFilters = !showFilters; showExport = false"
                 class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 font-bold px-4 py-2.5 rounded-2xl text-sm active:scale-95 transition-all shadow-sm">
                 <svg class="w-4 h-4" :class="showFilters ? 'text-blue-600' : 'text-gray-400'" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
                 </svg>
                 Filtros
                 <span x-show="{{ request()->hasAny(['search', 'department_id', 'city_id']) ? 'true' : 'false' }}" class="w-2 h-2 bg-blue-600 rounded-full"></span>
+            </button>
+            <button @click="showExport = !showExport; showFilters = false"
+                class="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 font-bold px-4 py-2.5 rounded-2xl text-sm active:scale-95 transition-all shadow-sm">
+                <svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Excel
             </button>
             <a href="/clients/create"
                 class="flex items-center gap-2 bg-blue-700 text-white font-bold px-4 py-2.5 rounded-2xl text-sm active:scale-95 transition-all shadow-md shadow-blue-100">
@@ -26,6 +33,79 @@
                 Nuevo
             </a>
         </div>
+    </div>
+
+    {{-- 1B. PANEL DE EXPORTAR EXCEL (Colapsable) — filtros propios del
+         reporte, separados del formulario de búsqueda de la lista de abajo
+         a propósito: "qué exporto" no es lo mismo que "qué estoy viendo". --}}
+    <div x-show="showExport"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="bg-gray-50 border border-gray-200 rounded-3xl p-5 shadow-inner">
+
+        <form method="GET" action="/reports/clients" class="space-y-4" x-data="{
+            departmentId: '',
+            cities: [],
+            async loadCities(id) {
+                if (!id) { this.cities = []; return; }
+                const res = await fetch('/api/cities/' + id);
+                this.cities = await res.json();
+            }
+        }">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {{-- Departamento --}}
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-2">Departamento</label>
+                    <select name="department_id" x-model="departmentId" @change="loadCities($event.target.value)"
+                        class="w-full border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm">
+                        <option value="">Todos</option>
+                        @foreach($departments as $dept)
+                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Ciudad --}}
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-2">Ciudad</label>
+                    <select name="city_id" :disabled="!departmentId"
+                        class="w-full border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm disabled:opacity-50">
+                        <option value="">Todas</option>
+                        <template x-for="city in cities" :key="city.id">
+                            <option :value="city.id" x-text="city.name"></option>
+                        </template>
+                    </select>
+                </div>
+
+                {{-- Rango de fecha de registro --}}
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-2">Registrado desde</label>
+                    <input type="date" name="from"
+                        class="w-full border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-2">Registrado hasta</label>
+                    <input type="date" name="to"
+                        class="w-full border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm">
+                </div>
+
+                {{-- Activo/Inactivo --}}
+                <div class="space-y-1 md:col-span-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-2">Estado</label>
+                    <select name="active"
+                        class="w-full border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm">
+                        <option value="">Todos</option>
+                        <option value="1">Activos</option>
+                        <option value="0">Inactivos</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-green-700 text-white font-bold py-3 rounded-2xl text-sm hover:bg-green-800 transition-colors shadow-lg shadow-green-100">
+                Descargar Excel
+            </button>
+        </form>
     </div>
 
     {{-- 2. PANEL DE FILTROS (Colapsable) --}}

@@ -102,6 +102,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/financial', [ReportController::class, 'financialFull']);
         Route::get('/reports/operational', [ReportController::class, 'operationalFollowup']);
         Route::get('/reports/print-production-list', [ReportController::class, 'printProductionList']);
+        Route::get('/reports/clients', [ReportController::class, 'clients']);
+        Route::get('/reports/products', [ReportController::class, 'products']);
 
         // CRUDs
         Route::resource('/products', ProductController::class);
