@@ -32,10 +32,7 @@ class OrderController extends Controller
             ->where('status', '!=', 'cancelled')
             ->where(fn ($q) => $q->whereNull('dispatch_status')->orWhere('dispatch_status', '!=', 'delivered'))
             ->when(request('stage'), fn ($q, $s) => $q->where('current_stage_id', $s))
-            ->when(request('search'), fn ($q, $s) => $q->whereHas('client', fn ($q) => $q->where('first_name', 'ilike', "%{$s}%")
-                      ->orWhere('last_name', 'ilike', "%{$s}%")
-            )->orWhere('consecutive', 'like', "%{$s}%")
-            )
+            ->search(request('search'))
             ->timeStatus(request('time_status'))
             ->orderByDesc('consecutive')
             ->paginate(20);

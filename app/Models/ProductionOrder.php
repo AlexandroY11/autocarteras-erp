@@ -357,4 +357,29 @@ class ProductionOrder extends Model
         return $query;
     }
 
+    /**
+     * Búsqueda por # de orden, nombre/apellido del cliente, o nombre del
+     * producto. Todo el OR va agrupado dentro de su propio where(function
+     * ...) a propósito — sin ese grupo, un ->orWhere('consecutive', ...)
+     * encadenado directo sobre la query rompe cualquier otra condición ya
+     * puesta (AND liga más fuerte que OR en SQL), dejando que el resultado
+     * se salte filtros obligatorios (ej. status != cancelled, o el filtro
+     * de habilidad de Worker/Director) con solo que el término buscado
+     * matchee. Verificado que esto pasaba de verdad en el código anterior
+     * antes de extraer este scope — no es solo una precaución teórica.
+     */
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        if (! $term) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $q) use ($term) {
+            $q->where('consecutive', 'like', "%{$term}%")
+                ->orWhereHas('client', fn ($q) => $q->where('first_name', 'ilike', "%{$term}%")
+                    ->orWhere('last_name', 'ilike', "%{$term}%")
+                )
+                ->orWhereHas('product', fn ($q) => $q->where('name', 'ilike', "%{$term}%"));
+        });
+    }
 }
