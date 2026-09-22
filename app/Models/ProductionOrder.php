@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use App\Services\PaymentAllocationService;
 use App\ValueObjects\PaymentBreakdown;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -326,6 +327,34 @@ class ProductionOrder extends Model
         if ($slack <= 2) return 'warning';
         
         return 'on_time';
+    }
+
+    /**
+     * Filtro de BD equivalente a getTimeStatusAttribute() para 'overdue' y
+     * 'critical' — time_status es un accessor en PHP, no una columna, así
+     * que no se puede hacer where('time_status', ...) directo. Extraído
+     * aquí como fuente única: antes vivía duplicado (y funcional) en
+     * ProductionOrderController::index(), una ruta huérfana que renderiza
+     * la misma vista pero a la que ya no llega ningún enlace del panel —
+     * la ruta real (OrderController::index(), /orders) nunca lo tenía.
+     * Si getTimeStatusAttribute() cambia su criterio de 'overdue'/'critical',
+     * este scope debe actualizarse igual para no desincronizarse.
+     */
+    public function scopeTimeStatus(Builder $query, ?string $status): Builder
+    {
+        if ($status === 'overdue') {
+            return $query->where('due_date', '<', now()->startOfDay());
+        }
+
+        if ($status === 'critical') {
+            // (due_date - CURRENT_DATE) es el equivalente nativo de Postgres
+            // a DATEDIFF(due_date, NOW()) — diferencia en días completos.
+            return $query->whereHas('product', function ($q) {
+                $q->whereRaw('(production_orders.due_date - CURRENT_DATE) < products.avg_production_days');
+            })->where('due_date', '>=', now()->startOfDay());
+        }
+
+        return $query;
     }
 
 }

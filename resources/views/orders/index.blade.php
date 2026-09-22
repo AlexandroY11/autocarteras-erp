@@ -228,9 +228,19 @@
                             ]);
                             $locationText = implode(', ', $locationParts);
                         @endphp
-                        <div class="flex flex-col justify-center px-5 py-4 flex-1 gap-0.5">
+                        {{-- min-w-0 es necesario: por defecto un hijo flex-1 nunca se
+                             encoge más allá del ancho de su propio contenido (aunque el
+                             texto pueda hacer wrap), lo que empujaba la columna ETAPA
+                             fuera del borde visible de la card en móvil en vez de dejar
+                             que esta columna hiciera wrap. --}}
+                        <div class="flex flex-col justify-center px-5 py-4 flex-1 min-w-0 gap-0.5">
                             <p class="text-lg font-medium text-gray-900">{{ $order->product->name }}</p>
-                            <p class="text-sm text-gray-400 flex items-center gap-1.5">
+                            {{-- flex-wrap: sin esto, cuando la columna padre queda muy
+                                 angosta (móvil), nombre+teléfono no tienen forma de ceder
+                                 (no pueden achicarse ni saltar de línea) y se desbordan
+                                 visualmente sobre la columna ETAPA de al lado, en vez de
+                                 partir en 2 líneas. --}}
+                            <p class="text-sm text-gray-400 flex items-center flex-wrap gap-1.5">
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                                 </svg>
@@ -239,7 +249,7 @@
                                 {{ $order->client->phone }}
                             </p>
                             @if($locationText)
-                                <p class="text-sm text-gray-400 flex items-center gap-1.5">
+                                <p class="text-sm text-gray-400 flex items-center flex-wrap gap-1.5">
                                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1115 0z"/>

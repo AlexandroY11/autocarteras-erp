@@ -36,6 +36,7 @@ class OrderController extends Controller
                       ->orWhere('last_name', 'ilike', "%{$s}%")
             )->orWhere('consecutive', 'like', "%{$s}%")
             )
+            ->timeStatus(request('time_status'))
             ->orderByDesc('consecutive')
             ->paginate(20);
 
