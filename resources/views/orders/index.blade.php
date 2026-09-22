@@ -207,79 +207,66 @@
                 class="block bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer"
                 style="will-change: transform;">
 
-                {{-- FILA SUPERIOR --}}
-                    <div class="flex items-stretch border-b border-gray-100">
-
-                        {{-- NÚMERO DE ORDEN --}}
-                        <div class="flex flex-col items-center justify-center px-5 py-4 bg-gray-50 border-r border-gray-100 min-w-[88px]">
-                            <span class="text-[11px] text-gray-400 uppercase tracking-widest">Ord.</span>
-                            <span class="text-2xl font-medium text-gray-900 leading-tight">
-                                #{{ str_pad($order->consecutive, 3, '0', STR_PAD_LEFT) }}
-                            </span>
-                        </div>
-
-                        {{-- PRODUCTO Y CLIENTE --}}
-                        @php
-                            // Solo los campos que el cliente realmente tiene — nunca se
-                            // rellena con un placeholder tipo "Ciudad no registrada".
-                            $locationParts = array_filter([
-                                optional($order->client->city)->name,
-                                optional($order->client->department)->name,
-                            ]);
-                            $locationText = implode(', ', $locationParts);
-                        @endphp
-                        {{-- min-w-0 es necesario: por defecto un hijo flex-1 nunca se
-                             encoge más allá del ancho de su propio contenido (aunque el
-                             texto pueda hacer wrap), lo que empujaba la columna ETAPA
-                             fuera del borde visible de la card en móvil en vez de dejar
-                             que esta columna hiciera wrap. --}}
-                        <div class="flex flex-col justify-center px-5 py-4 flex-1 min-w-0 gap-0.5">
-                            <p class="text-lg font-medium text-gray-900">{{ $order->product->name }}</p>
-                            {{-- flex-wrap: sin esto, cuando la columna padre queda muy
-                                 angosta (móvil), nombre+teléfono no tienen forma de ceder
-                                 (no pueden achicarse ni saltar de línea) y se desbordan
-                                 visualmente sobre la columna ETAPA de al lado, en vez de
-                                 partir en 2 líneas. --}}
+                {{-- BLOQUE SUPERIOR: orden + producto + cliente + ubicación + estado,
+                     un solo flujo vertical — antes eran 3 columnas de ancho fijo
+                     (Ord. / Producto+Cliente / Etapa), que en pantallas angostas
+                     dejaban mucho espacio muerto (la columna Ord. casi vacía
+                     debajo del número, la de etapa con aire de sobra). Ahora nada
+                     tiene un ancho fijo, así que no hay espacio reservado sin usar. --}}
+                    @php
+                        // Solo los campos que el cliente realmente tiene — nunca se
+                        // rellena con un placeholder tipo "Ciudad no registrada".
+                        $locationParts = array_filter([
+                            optional($order->client->city)->name,
+                            optional($order->client->department)->name,
+                        ]);
+                        $locationText = implode(', ', $locationParts);
+                    @endphp
+                    <div class="px-5 py-4 border-b border-gray-100 space-y-0.5">
+                        <p class="text-sm text-gray-400 uppercase tracking-widest font-medium">
+                            Orden #{{ str_pad($order->consecutive, 3, '0', STR_PAD_LEFT) }}
+                        </p>
+                        <p class="text-lg font-medium text-gray-900">{{ $order->product->name }}</p>
+                        <p class="text-sm text-gray-400 flex items-center flex-wrap gap-1.5">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                            </svg>
+                            {{ $order->client->full_name }}
+                            <span class="text-gray-300">·</span>
+                            {{ $order->client->phone }}
+                        </p>
+                        @if($locationText)
                             <p class="text-sm text-gray-400 flex items-center flex-wrap gap-1.5">
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1115 0z"/>
                                 </svg>
-                                {{ $order->client->full_name }}
-                                <span class="text-gray-300">·</span>
-                                {{ $order->client->phone }}
+                                {{ $locationText }}
                             </p>
-                            @if($locationText)
-                                <p class="text-sm text-gray-400 flex items-center flex-wrap gap-1.5">
-                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.5-7.5 11.25-7.5 11.25S4.5 18 4.5 10.5a7.5 7.5 0 1115 0z"/>
-                                    </svg>
-                                    {{ $locationText }}
-                                </p>
-                            @endif
-                        </div>
+                        @endif
 
-                        {{-- ETAPA --}}
-                        <div class="flex flex-col items-end justify-center gap-1 px-3 py-4 border-l border-gray-100 shrink-0 w-[150px]">
+                        {{-- ESTADO — su propia fila, ancho completo. Los 2 badges del
+                             caso "Terminado + despacho" ahora caben lado a lado. --}}
+                        <div class="flex items-center flex-wrap gap-x-4 gap-y-1 pt-2 mt-1 border-t border-gray-100">
                             @if($order->currentStage)
-                                <div class="flex items-center gap-2 w-full min-w-0 justify-end">
+                                <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full shrink-0"
                                         style="background: {{ $order->currentStage->color }}"></span>
-                                    <span class="text-sm font-medium truncate" style="color: {{ $order->currentStage->color }}">
+                                    <span class="text-sm font-medium" style="color: {{ $order->currentStage->color }}">
                                         {{ $order->currentStage->name }}
                                     </span>
                                 </div>
                             @elseif($order->status === 'cancelled')
                                 {{-- Cancelada después de terminar producción (dispatch_status
                                      sigue en pending_dispatch por la guarda de cancel()) — mostrar
-                                     "Terminado" ahí sería falso, así que se omite la línea de
+                                     "Terminado" ahí sería falso, así que se omite el badge de
                                      despacho por completo. --}}
-                                <div class="flex items-center gap-2 w-full min-w-0 justify-end">
+                                <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
                                     <span class="text-sm font-medium text-red-600">Cancelado</span>
                                 </div>
                             @else
-                                <div class="flex items-center gap-2 w-full min-w-0 justify-end">
+                                <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0"></span>
                                     <span class="text-sm font-medium text-green-600">Terminado</span>
                                 </div>
@@ -288,21 +275,15 @@
                                         $dsColor = $dispatchStatusColors[$order->dispatch_status]
                                             ?? ['dot' => 'bg-gray-300', 'text' => 'text-gray-500'];
                                     @endphp
-                                    {{-- Sin truncate a propósito: "Pendiente de despacho" no
-                                         cabe en una sola línea a este ancho — mejor que haga
-                                         wrap a 2 líneas que perder texto con "...". El dot
-                                         queda arriba (items-start) para no quedar descentrado
-                                         si el texto sí llega a envolver. --}}
-                                    <div class="flex items-start gap-2 w-full min-w-0 justify-end">
-                                        <span class="w-2.5 h-2.5 rounded-full {{ $dsColor['dot'] }} shrink-0 mt-1"></span>
-                                        <span class="text-sm font-medium {{ $dsColor['text'] }} text-right leading-tight">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full {{ $dsColor['dot'] }} shrink-0"></span>
+                                        <span class="text-sm font-medium {{ $dsColor['text'] }}">
                                             {{ $order->dispatch_status_label }}
                                         </span>
                                     </div>
                                 @endif
                             @endif
                         </div>
-
                     </div>
 
                     @if($order->guide_number_missing)
