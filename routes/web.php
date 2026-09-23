@@ -22,7 +22,7 @@ Route::get('/', function () {
 
 // Auth — sin middleware
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Las rutas de login WebAuthn (webauthn.auth.options / webauthn.auth) ya las

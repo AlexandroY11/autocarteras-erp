@@ -103,7 +103,13 @@
                         <div class="w-full bg-gray-50 rounded-2xl p-4 border border-transparent hover:border-blue-100 transition-colors">
                             <label class="flex items-center gap-3 cursor-pointer group">
                                 <div class="relative">
-                                    <input type="checkbox" name="active" value="1" 
+                                    {{-- Un checkbox desmarcado no envía nada al servidor —
+                                         sin este hidden antes, UserController::update()
+                                         nunca recibía 'active' al desactivar, y su default
+                                         (true) dejaba al usuario activo sin importar lo que
+                                         el admin marcara en el form. --}}
+                                    <input type="hidden" name="active" value="0">
+                                    <input type="checkbox" name="active" value="1"
                                         {{ old('active', $user->active ?? true) ? 'checked' : '' }} class="sr-only peer">
                                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                 </div>

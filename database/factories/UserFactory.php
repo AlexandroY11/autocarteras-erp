@@ -30,6 +30,11 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Explícito a propósito: el default de BD es true, pero
+            // actingAs() usa la instancia en memoria del factory sin releer
+            // de BD, así que sin esto un usuario de factory queda con
+            // active=null en memoria — EnsureUserIsActive lo bloquearía.
+            'active' => true,
         ];
     }
 

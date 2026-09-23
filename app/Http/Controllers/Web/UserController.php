@@ -105,6 +105,15 @@ class UserController extends Controller
         $user->update($data);
         $user->skills()->sync($request->skills ?? []);
 
+        // Desactivar a alguien debe cortar el acceso ya emitido, no solo el
+        // futuro — antes esto no revocaba nada: un token Sanctum ya emitido
+        // seguía siendo válido para siempre (Sanctum no expira tokens por
+        // defecto), y la sesión web activa seguía funcionando hasta que
+        // expirara sola (ver también EnsureUserIsActive).
+        if (! $data['active']) {
+            $user->tokens()->delete();
+        }
+
         return redirect('/users')->with('success', 'Usuario actualizado.');
     }
 

@@ -4,7 +4,7 @@ use App\Modules\Auth\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas públicas
-Route::post('auth/login', [AuthController::class, 'login']);
+Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 // Rutas protegidas
 Route::middleware('auth:sanctum')->group(function () {

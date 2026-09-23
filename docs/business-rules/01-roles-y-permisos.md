@@ -15,6 +15,14 @@
 - Los 3+ reportes Excel/PDF (`/reports/*`) están protegidos con **doble gate**: middleware `admin` en la ruta + `abort_unless(auth()->user()->isAdmin(), 403)` explícito dentro de cada método del controlador. Todo reporte nuevo debe seguir este mismo patrón, sin excepción.
 - Integration: en `routes/api.php`, cada ruta exige una ability específica (`ability:products:read`, `ability:clients:read`, `payments:read`, etc.) vía middleware de Sanctum — nunca `auth:sanctum` a secas para una ruta que un token de integración pueda alcanzar.
 
+## Hallazgo — las abilities de Sanctum son decorativas hoy: todo token tiene acceso total
+
+La intención documentada arriba (Integration usa "abilities explícitas y mínimas por token") **no está implementada**. `app/Modules/Auth/Services/AuthService.php:24` emite todos los tokens con `$user->createToken('auth_token')->plainTextToken` — sin array de abilities, lo que por default de Sanctum otorga la ability comodín `['*']` (todas). Es el único lugar del código donde se crean tokens (verificado por grep en todo `app/`). Los middlewares `ability:products:read`, `ability:clients:read`, `ability:stages:read`, `ability:payments:read`, `ability:production-orders:read` que sí existen en `routes/api.php` y los módulos, por lo tanto, no bloquean a nadie que ya haya pasado el login — cualquier token válido las satisface todas.
+
+**Riesgo hoy: bajo** — quien puede loguearse hoy es solo staff interno, ya separado por rol vía middleware `admin` para escritura (ese control sí funciona, es independiente de abilities). **Se vuelve un riesgo real el día que se conecte una integración externa** (el bot de WhatsApp/n8n de `WhatsappOrderController.php`, hoy pausado): si obtiene un token vía este mismo endpoint de login, tendría acceso de lectura completo a clientes/productos/pagos/órdenes, no solo a lo que necesita.
+
+**Pendiente, no implementado a propósito** — decisión del usuario del 2026-09-23: no es urgente mientras la integración esté pausada, pero debe resolverse antes de conectar cualquier consumidor externo. Dos caminos posibles: (a) pasar un array de abilities real a `createToken()` según el caso de uso, o (b) si el control real seguirá siendo por rol/gate y no por ability, retirar los middlewares `ability:*` para no sugerir una protección que no existe.
+
 ## Qué queda sin definir
 
 - No hay una matriz formal exhaustiva de "cada endpoint × cada rol" — la fuente de verdad es el middleware/gate real en `routes/web.php` y `routes/api.php`. Ante una ruta nueva, preguntar qué rol(es) debería alcanzar, no asumir por analogía.

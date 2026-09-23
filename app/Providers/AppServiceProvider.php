@@ -54,6 +54,13 @@ class AppServiceProvider extends ServiceProvider
         // devolver el 429 esperado.
         $this->app->bind(\LaravelWebauthn\Contracts\LockoutResponse::class, \LaravelWebauthn\Http\Responses\LockoutResponse::class);
 
+        // Login por contraseña (web y API) — mismo criterio de bloqueo que ya
+        // usa WebAuthn abajo (5 intentos/minuto por email+IP), pero antes no
+        // tenía ningún throttle: Auth::attempt() se podía scriptear sin
+        // límite contra /login y /api/v1/auth/login.
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)
+            ->by(Str::lower((string) $request->input('email')).'|'.$request->ip()));
+
         // Con config('webauthn.limiters.login') = 'webauthn-login', las rutas del
         // paquete usan el middleware throttle: estandar de Laravel en vez de meter
         // EnsureLoginIsNotThrottled en el pipeline — evita un TypeError real del

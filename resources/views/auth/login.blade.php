@@ -76,6 +76,11 @@
                     >
                 </div>
 
+                <label class="flex items-center gap-2 text-xs font-bold text-gray-500">
+                    <input type="checkbox" name="remember" value="1" class="rounded border-gray-300">
+                    Recordarme en este dispositivo
+                </label>
+
                 <button
                     type="submit"
                     class="w-full bg-blue-700 hover:bg-blue-800 text-white font-black py-5 rounded-[2rem]"
