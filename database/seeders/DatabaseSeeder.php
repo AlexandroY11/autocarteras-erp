@@ -5,20 +5,26 @@ namespace Database\Seeders;
 use App\Models\Stage;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin principal
+        // Admin principal — contraseña aleatoria por corrida, impresa una
+        // sola vez en consola (nunca hardcodeada: un seeder con contraseña
+        // fija y predecible es una credencial de facto si esto llega a
+        // correr fuera de un entorno 100% descartable).
+        $adminPassword = Str::password(16);
         User::create([
             'name' => 'Administrador',
             'email' => 'admin@autocarteras.com',
             'phone' => '3170000000',
-            'password' => 'admin123',
+            'password' => $adminPassword,
             'role' => 'admin',
             'active' => true,
         ]);
+        $this->command?->info("Admin creado: admin@autocarteras.com / {$adminPassword}");
 
         // Trabajadores de prueba
         $workers = [
@@ -28,12 +34,14 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($workers as $worker) {
+            $workerPassword = Str::password(16);
             User::create([
                 ...$worker,
-                'password' => 'worker123',
+                'password' => $workerPassword,
                 'role' => 'worker',
                 'active' => true,
             ]);
+            $this->command?->info("Worker creado: {$worker['email']} / {$workerPassword}");
         }
 
         $stages = [
