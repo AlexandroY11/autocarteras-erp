@@ -13,7 +13,8 @@ decisiones de negocio quedaron abiertas sin implementar. Última actualización:
 | 2 | Autenticación y control de acceso | `390ce4c` | Pusheado |
 | 3 | Integridad financiera y autorización a nivel de objeto (IDOR) | `0a07f49` | Pusheado |
 | 4 | Despachos/producción — centralización de guards de estado | `d44e012` | Pusheado |
-| 5 | Inyección de fórmulas en Excel/reportes | `272cbca` | Comiteado, sin push |
+| 5 | Inyección de fórmulas en Excel/reportes | `272cbca` | Pusheado |
+| 6 | Inyección JS vía atributos Alpine.js (`@click`, `x-data`) | (pendiente de commit) | Auditado y corregido, sin comitear todavía |
 
 El usuario revisa cada commit con `git show` completo antes de aprobar el
 push — **no hacer `git push` sin instrucción explícita**, aunque hayan
@@ -76,6 +77,51 @@ cualquier valor que empiece con `=` antes de escribirlo (trait
 `App\Exports\Concerns\EscapesFormulaInjection`), sin tocar cómo se guarda el
 dato en BD ni la validación de esos campos.
 
+### Fase 6 — resumen
+`{!! !!}` está limpio en todo `resources/views` (3 usos, todos `asset()`
+estático). El riesgo real era otro: `{{ $valor }}` interpolado crudo dentro
+de un **atributo HTML** que Alpine.js evalúa como JS (`@click="..."`,
+`x-data="{...}"`) — a diferencia de un `<script>` normal, el navegador
+**sí** decodifica las entidades de un atributo antes de que Alpine lo
+evalúe, reintroduciendo la comilla que `{{ }}` había neutralizado.
+Verificado con ejecución real en navegador (Playwright + Edge, no solo
+lectura de código):
+- **`@click="showAlert.delete('delete-form-{{ $id }}', '...{{ $nombre }}...')"`**
+  en `products/index.blade.php`, `clients/index.blade.php`,
+  `stages/index.blade.php`, `users/index.blade.php` — un producto con
+  `name = "X', (document.title='PWNED'), 'Y"` ejecutó JS real al hacer clic
+  en "Eliminar" (`document.title` cambió).
+- **`x-data="{ selected: '{{ $selected }}' }"`** en
+  `components/searchable-select.blade.php` (usado por el selector de
+  `color`/`sticker_color` en `orders/edit.blade.php` y, vía `old()`, en
+  `orders/form.blade.php`) — una orden con `color` malicioso ejecutó JS con
+  solo **abrir** la página de edición, sin ningún clic.
+- Contraste verificado: la misma técnica dentro de un `<script>` normal
+  (`orders/calendar.blade.php`, nombre de etapa) **no** se ejecuta — el
+  navegador no decodifica entidades ahí, confirmando que el riesgo es
+  específico del contexto "atributo HTML + Alpine", no de cualquier uso de
+  `{{ }}` cerca de JS.
+
+Corregido reemplazando la interpolación cruda por
+`{{ \Illuminate\Support\Js::from($valor) }}` en los 5 sitios (los 4 botones
+"Eliminar" + el componente `searchable-select`) — es el helper estándar de
+Laravel para pasar un valor PHP a un contexto JS de forma segura (usa
+`json_encode` con flags `JSON_HEX_*`), a diferencia de `addslashes()`
+(usado en `calendar.blade.php`), que solo funciona por casualidad en
+contexto `<script>` y no es suficiente en un atributo. Verificado en vivo
+que la ejecución ya no ocurre (mismos payloads, mismos casos) y que un
+valor normal (incluido uno con apóstrofe y `&`, ej. `O'Brien & Co`) se ve
+exactamente igual que antes en el modal/selector.
+
+Los 5 sitios afectados son Admin-escribe/Admin-ve hoy — mismo perfil de
+riesgo acotado que la Fase 5. Matiz para cuando se reactive la integración
+de WhatsApp/n8n: la validación comentada de `WhatsappOrderController`
+restringe `color` a una lista cerrada (`in:Negro,Gris,Beige`) — ese vector
+específico no se abriría con la integración tal como está redactada hoy.
+`client_address`/`client_first_name`/`client_last_name` en esa misma
+validación **sí son texto libre** — el vector de `clients/index.blade.php`
+sí se volvería explotable por un tercero externo el día que se reactive.
+
 ## Pendiente de confirmación externa (el usuario lo está verificando, no yo)
 
 - **1c** — `trustProxies(at: '*')` en `bootstrap/app.php` confía en cualquier
@@ -115,10 +161,8 @@ confirmaron antes de dar por cerrada la Fase 2.
 
 ## Fase pendiente
 
-- **Fase 6 — XSS en campos de texto libre**: revisar si `observations`
-  (orden), `notes` (pago) u otros campos de texto libre se renderizan en
-  algún lugar con `{!! !!}` en vez de `{{ }}` (stored XSS). Candidato
-  propuesto durante la Fase 5, todavía sin auditar.
+Ninguna todavía identificada — Fases 1-6 completas. Próxima fase a definir
+cuando el usuario lo pida.
 
 ## Cómo continuar en una sesión nueva
 

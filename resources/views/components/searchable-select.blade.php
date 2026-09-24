@@ -10,7 +10,7 @@
 <div x-data="{
     open: false,
     search: '',
-    selected: '{{ $selected }}',
+    selected: {{ \Illuminate\Support\Js::from($selected) }},
     selectedLabel: '',
     options: {{ json_encode($options) }},
     disabled: {{ $disabled ? 'true' : 'false' }},
