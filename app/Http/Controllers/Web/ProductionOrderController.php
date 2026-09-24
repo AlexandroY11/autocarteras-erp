@@ -231,16 +231,8 @@ class ProductionOrderController extends Controller
 
     public function advanceStage(Request $request, ProductionOrder $productionOrder)
     {
-        if (in_array($productionOrder->status, ['done', 'cancelled'])) {
-            return back()->withErrors(['error' => 'Esta orden no puede avanzar de etapa.']);
-        }
-
-        if ($productionOrder->current_stage_id !== null && $productionOrder->current_stage_id === Stage::enviadoId()) {
-            return back()->withErrors([
-                'error' => 'La orden ya se encuentra en la etapa Enviado.'
-            ]);
-        }
-
+        // Guards (status done/cancelled, etapa "Enviado") centralizados en
+        // ProductionOrderService::advanceStage() — ver el catch de abajo.
         try {
             $this->service->advanceStage(
                 $productionOrder,
@@ -269,11 +261,13 @@ class ProductionOrderController extends Controller
     
     public function cancel(ProductionOrder $productionOrder)
     {
-        if (! in_array($productionOrder->dispatch_status, [null, 'pending_dispatch'], true)) {
-            return back()->withErrors(['error' => 'No se puede cancelar una orden que ya fue despachada.']);
+        // Guard (dispatch_status ya despachado) centralizado en
+        // ProductionOrderService::cancel().
+        try {
+            $this->service->cancel($productionOrder);
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        $this->service->cancel($productionOrder);
 
         return redirect('/orders')->with('success', 'Orden cancelada.');
     }

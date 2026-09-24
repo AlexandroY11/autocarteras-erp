@@ -91,12 +91,8 @@ class ProductionOrderController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        if (in_array($productionOrder->status, ['done', 'cancelled'])) {
-            return response()->json([
-                'message' => 'Esta orden no puede avanzar de etapa.'
-            ], 422);
-        }
-
+        // Guards (status done/cancelled, etapa "Enviado") centralizados en
+        // ProductionOrderService::advanceStage() — ver el catch de abajo.
         try {
             $order = $this->service->advanceStage(
                 $productionOrder,
@@ -112,12 +108,14 @@ class ProductionOrderController extends Controller
 
     public function cancel(ProductionOrder $productionOrder): JsonResponse
     {
-        if (! in_array($productionOrder->dispatch_status, [null, 'pending_dispatch'], true)) {
-            return response()->json([
-                'message' => 'No se puede cancelar una orden que ya fue despachada.'
-            ], 422);
+        // Guard (dispatch_status ya despachado) centralizado en
+        // ProductionOrderService::cancel().
+        try {
+            $order = $this->service->cancel($productionOrder);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
         }
 
-        return response()->json($this->service->cancel($productionOrder));
+        return response()->json($order);
     }
 }

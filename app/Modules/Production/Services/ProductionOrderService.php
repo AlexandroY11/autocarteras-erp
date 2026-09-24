@@ -74,6 +74,20 @@ class ProductionOrderService
 
     public function advanceStage(ProductionOrder $order, User $user, ?string $notes = null): ProductionOrder
     {
+        // Antes vivía duplicado (idéntico) en el controller web y en el de
+        // API — cualquiera que agregara un tercer consumidor, o editara uno
+        // sin replicar el otro, perdía esta protección en silencio.
+        if (in_array($order->status, ['done', 'cancelled'], true)) {
+            throw new \Exception('Esta orden no puede avanzar de etapa.', 422);
+        }
+
+        // "Enviado" es una etapa inactiva hoy — este guard solo protege
+        // pedidos legacy que quedaron con current_stage_id apuntando ahí
+        // antes de la desactivación. Solo el controller web lo tenía.
+        if ($order->current_stage_id !== null && $order->current_stage_id === Stage::enviadoId()) {
+            throw new \Exception('La orden ya se encuentra en la etapa Enviado.', 422);
+        }
+
         if (! $order->current_stage_id || ! $user->canAdvanceStage($order->current_stage_id)) {
             throw new \Exception('No tienes la habilidad asignada para avanzar esta etapa.', 403);
         }
@@ -134,6 +148,12 @@ class ProductionOrderService
 
     public function cancel(ProductionOrder $order): ProductionOrder
     {
+        // Antes vivía duplicado (idéntico) en el controller web y en el de
+        // API — este método no validaba nada por sí solo.
+        if (! in_array($order->dispatch_status, [null, 'pending_dispatch'], true)) {
+            throw new \Exception('No se puede cancelar una orden que ya fue despachada.', 422);
+        }
+
         $order->update(['status' => 'cancelled']);
         return $order;
     }
