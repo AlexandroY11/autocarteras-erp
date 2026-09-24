@@ -1,0 +1,98 @@
+# Estado de la auditoría de seguridad por fases
+
+Registro de continuidad entre sesiones — para no perder el hilo de qué se
+auditó, qué se corrigió, qué sigue pendiente de confirmación externa y qué
+decisiones de negocio quedaron abiertas sin implementar. Última actualización:
+**2026-09-23**.
+
+## Fases completadas (auditadas, corregidas, comiteadas — sin push todavía)
+
+| Fase | Tema | Commit | Estado |
+|---|---|---|---|
+| 1 | Gestión de credenciales y secretos | `05df65c` | Comiteado, sin push |
+| 2 | Autenticación y control de acceso | `390ce4c` | Comiteado, sin push |
+| 3 | Integridad financiera y autorización a nivel de objeto (IDOR) | `0a07f49` | Comiteado, sin push |
+
+El usuario va a revisar estos 3 commits con calma antes de decidir el push a
+`origin/master` — **no hacer `git push` sin instrucción explícita**, aunque
+hayan pasado varias sesiones.
+
+### Fase 1 — resumen
+`docker-compose.yml` con `POSTGRES_PASSWORD` hardcodeado → ahora lee de
+`${DB_PASSWORD}`. `DatabaseSeeder.php` con contraseñas `admin123`/`worker123`
+→ contraseñas aleatorias (`Str::password(16)`) impresas una sola vez en
+consola. `.dockerignore` no excluía `.env` (riesgo de hornear secretos reales
+en la imagen vía el `COPY . .` del Dockerfile) → corregido. Eliminado
+`docker/php/Dockerfile` huérfano sin ninguna referencia en el repo.
+
+### Fase 2 — resumen
+`/login` (web) y `/api/v1/auth/login` no tenían ningún rate limit → throttle
+de 5/min por email+IP (mismo criterio que ya usaba WebAuthn). `logout()` no
+invalidaba la sesión ni rotaba el CSRF token → corregido. `Auth::attempt()`
+forzaba "remember me" en todo login → ahora es opcional vía checkbox.
+Desactivar un usuario no revocaba nada (ni sesión ni token Sanctum, que no
+expira por defecto) → se agregó revocación explícita de tokens en
+`UserController::update()` + middleware `EnsureUserIsActive` aplicado
+globalmente (web y api) que revalida `active` en cada request. De paso se
+encontró y corrigió un bug real independiente: el checkbox "Usuario Activo"
+en `users/form.blade.php` nunca funcionó (faltaba el `<input type="hidden">`
+de respaldo) — nadie había podido desactivar a nadie desde la UI hasta ese
+commit.
+
+### Fase 3 — resumen
+`orders/show.blade.php` mostraba precio/envío/saldos/pagos de **cualquier**
+orden a Director/Worker sin ningún gate — contradice directamente
+`01-roles-y-permisos.md` ("sin acceso financiero"). Corregido con
+`@if(auth()->user()->isAdmin())`. En la API, `ProductionOrderController` y
+`PaymentController` devolvían esos mismos campos a cualquier token
+autenticado (las abilities de Sanctum son decorativas, ver hallazgo de Fase
+2) — se agregaron `ProductionOrderResource` y `PaymentResource` que ocultan
+`price`/`shipping_price`/`payments`/saldos cuando el usuario no es Admin, sin
+tocar el resto de los campos. Se incluyó `advanceStage()` en el mismo fix por
+ser la misma causa raíz en el mismo archivo.
+
+## Pendiente de confirmación externa (el usuario lo está verificando, no yo)
+
+- **1c** — `trustProxies(at: '*')` en `bootstrap/app.php` confía en cualquier
+  proxy para resolver `$request->ip()`. El throttle por IP (login y WebAuthn)
+  depende de que el proxy real de producción sobrescriba `X-Forwarded-For`
+  del cliente en vez de anexarlo. El usuario va a confirmar esto con quien
+  administra el proxy de producción.
+- **2c** — Falta confirmar si `SESSION_SECURE_COOKIE=true` está explícito en
+  el `.env` real de producción (el código no lo fuerza, depende del
+  auto-detect de Laravel según si la request es HTTPS). El usuario lo va a
+  revisar directamente en el servidor.
+
+No asumir un resultado para ninguno de los dos — preguntar si ya se
+confirmaron antes de dar por cerrada la Fase 2.
+
+## Decisiones de negocio abiertas, documentadas pero sin implementar
+
+- **`docs/business-rules/01-roles-y-permisos.md`** — las abilities de Sanctum
+  son decorativas hoy (todo token se emite con `['*']`). No es urgente
+  mientras la integración WhatsApp/n8n esté pausada, pero debe resolverse
+  antes de conectar cualquier consumidor externo.
+- **`docs/business-rules/01-roles-y-permisos.md`** — `ProductionOrderController::show()`
+  (web y API) no filtra por habilidad/etapa del usuario — un Worker/Director
+  puede ver el detalle operativo de cualquier orden, no solo las suyas (ya no
+  ve lo financiero, eso sí se corrigió). El usuario cree que debería
+  filtrarse igual que "Mis tareas", pero lo va a decidir con calma. **No
+  implementar sin que lo confirme explícitamente.**
+
+## Fase pendiente
+
+- **Fase 4 — Despachos y producción**: auditar la máquina de estados de
+  órdenes/despachos (¿se pueden saltar etapas o forzar transiciones
+  inválidas vía API?). Todavía no iniciada — se retoma cuando el usuario lo
+  pida.
+
+## Cómo continuar en una sesión nueva
+
+1. Leer este archivo primero para saber en qué quedó la auditoría.
+2. Antes de tocar código nuevo de seguridad, preguntar si 1c/2c ya se
+   confirmaron y si los 3 commits de Fase 1-3 ya se hicieron push.
+3. Seguir el mismo formato por fase: solo auditoría primero (Hallazgo →
+   Evidencia → Riesgo → Propuesta, sin tocar código), esperar aprobación
+   explícita por punto, implementar, verificar en vivo con datos Factory
+   desechables (nunca mutar filas reales), mostrar diff, comitear solo
+   cuando se apruebe, nunca hacer push sin instrucción explícita.

@@ -17,6 +17,7 @@ Cada archivo documenta un dominio con esta estructura por regla: **qué es** (he
 | [11-webauthn.md](11-webauthn.md) | Passkeys/WebAuthn: qué se conserva, cómo se resuelve el usuario, protección contra fuerza bruta. |
 | [12-arquitectura.md](12-arquitectura.md) | Stack, qué no introducir sin necesidad, regla de centralización Web/API. |
 | [13-workflow-y-seguridad.md](13-workflow-y-seguridad.md) | El proceso obligatorio antes de cambios importantes, y las reglas de seguridad de datos. |
+| [14-auditoria-seguridad-estado.md](14-auditoria-seguridad-estado.md) | Estado vivo de la auditoría de seguridad por fases: qué está comiteado, qué falta confirmar externamente, qué sigue pendiente. |
 
 **Hallazgos abiertos** (código actual contradice o no coincide con lo documentado — ver el archivo correspondiente para el detalle):
 - `08-catalogo-y-colores.md` — `cart_colors`/`sticker_color_suggestions` son scaffolding sin conectar; el color sigue hardcodeado en 2 lugares.
