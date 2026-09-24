@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\EscapesFormulaInjection;
 use App\Exports\Concerns\HasDueDateTracking;
 use App\Models\ProductionOrder;
 use Illuminate\Support\Collection;
@@ -22,6 +23,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class FinancialFullReportExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting, WithStyles
 {
     use HasDueDateTracking;
+    use EscapesFormulaInjection;
 
     private const MONEY_COLUMNS = ['M', 'N', 'O', 'P', 'Q', 'R', 'S'];
     private const DATE_COLUMNS = ['T', 'U', 'V'];
@@ -83,12 +85,12 @@ class FinancialFullReportExport implements FromCollection, WithHeadings, WithMap
 
         return [
             $order->consecutive,
-            optional($order->client)->full_name,
+            $this->escapeFormula(optional($order->client)->full_name),
             optional($order->client)->phone,
-            optional($order->client)->address,
+            $this->escapeFormula(optional($order->client)->address),
             optional(optional($order->client)->city)->name,
             optional(optional($order->client)->department)->name,
-            optional($order->product)->name,
+            $this->escapeFormula(optional($order->product)->name),
             $order->color,
             $order->sticker ? 'Sí' : 'No',
             $order->sticker_color,

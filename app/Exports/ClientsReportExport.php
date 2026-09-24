@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\EscapesFormulaInjection;
 use App\Models\Client;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -23,6 +24,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 class ClientsReportExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting, WithStyles
 {
+    use EscapesFormulaInjection;
+
     private const DATE_COLUMN = 'H';
 
     public function __construct(
@@ -60,10 +63,10 @@ class ClientsReportExport implements FromCollection, WithHeadings, WithMapping, 
     public function map($client): array
     {
         return [
-            $client->full_name,
+            $this->escapeFormula($client->full_name),
             $client->phone,
             $client->email,
-            $client->address,
+            $this->escapeFormula($client->address),
             optional($client->city)->name,
             optional($client->department)->name,
             $client->active ? 'Sí' : 'No',

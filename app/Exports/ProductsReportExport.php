@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\EscapesFormulaInjection;
 use App\Models\Product;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -18,6 +19,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 class ProductsReportExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting, WithStyles
 {
+    use EscapesFormulaInjection;
+
     private const MONEY_COLUMNS = ['E', 'F'];
 
     public function collection(): Collection
@@ -36,8 +39,8 @@ class ProductsReportExport implements FromCollection, WithHeadings, WithMapping,
     public function map($product): array
     {
         return [
-            $product->name,
-            $product->description,
+            $this->escapeFormula($product->name),
+            $this->escapeFormula($product->description),
             $product->pieces,
             $product->avg_production_days,
             (float) $product->base_price,

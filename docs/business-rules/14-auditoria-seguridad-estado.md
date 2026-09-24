@@ -5,17 +5,19 @@ auditó, qué se corrigió, qué sigue pendiente de confirmación externa y qué
 decisiones de negocio quedaron abiertas sin implementar. Última actualización:
 **2026-09-23**.
 
-## Fases completadas (auditadas, corregidas, comiteadas — sin push todavía)
+## Fases completadas
 
 | Fase | Tema | Commit | Estado |
 |---|---|---|---|
-| 1 | Gestión de credenciales y secretos | `05df65c` | Comiteado, sin push |
-| 2 | Autenticación y control de acceso | `390ce4c` | Comiteado, sin push |
-| 3 | Integridad financiera y autorización a nivel de objeto (IDOR) | `0a07f49` | Comiteado, sin push |
+| 1 | Gestión de credenciales y secretos | `05df65c` | Pusheado |
+| 2 | Autenticación y control de acceso | `390ce4c` | Pusheado |
+| 3 | Integridad financiera y autorización a nivel de objeto (IDOR) | `0a07f49` | Pusheado |
+| 4 | Despachos/producción — centralización de guards de estado | `d44e012` | Pusheado |
+| 5 | Inyección de fórmulas en Excel/reportes | (pendiente de commit) | Auditado y corregido, sin comitear todavía |
 
-El usuario va a revisar estos 3 commits con calma antes de decidir el push a
-`origin/master` — **no hacer `git push` sin instrucción explícita**, aunque
-hayan pasado varias sesiones.
+El usuario revisa cada commit con `git show` completo antes de aprobar el
+push — **no hacer `git push` sin instrucción explícita**, aunque hayan
+pasado varias sesiones.
 
 ### Fase 1 — resumen
 `docker-compose.yml` con `POSTGRES_PASSWORD` hardcodeado → ahora lee de
@@ -51,6 +53,29 @@ autenticado (las abilities de Sanctum son decorativas, ver hallazgo de Fase
 tocar el resto de los campos. Se incluyó `advanceStage()` en el mismo fix por
 ser la misma causa raíz en el mismo archivo.
 
+### Fase 4 — resumen
+`ProductionOrderService::cancel()` y `advanceStage()` no validaban nada por sí
+solos — los guards reales (bloquear cancelación si ya se despachó, bloquear
+avance si `status` es done/cancelled o si la orden está en la etapa "Enviado")
+vivían duplicados, idénticos, en el controller web y en el de API. Ningún
+bypass activo (ambas copias eran correctas), pero riesgo de mantenimiento. Se
+movieron los 3 guards al servicio; los controllers quedaron con un solo
+`try/catch` cada uno.
+
+### Fase 5 — resumen
+Los 4 `Export` (`ClientsReportExport`, `ProductsReportExport`,
+`OperationalFollowupReportExport`, `FinancialFullReportExport`) escriben
+`client.full_name`/`address` y `product.name`/`description` a celdas de Excel
+sin sanear. Verificado con una prueba real (generar el `.xlsx` y reabrirlo con
+`PhpSpreadsheet\IOFactory`): un valor que empieza con `=` y parsea como
+fórmula válida se guarda como celda tipo fórmula ejecutable de verdad
+(`Cell::getDataType() === 'f'`) — `+`/`-`/`@` NO producen ese resultado en
+este stack (esa checklist es de CSV, no de `.xlsx` genuino con metadata de
+tipo de celda; confirmado, no asumido). Corregido anteponiendo un apóstrofe a
+cualquier valor que empiece con `=` antes de escribirlo (trait
+`App\Exports\Concerns\EscapesFormulaInjection`), sin tocar cómo se guarda el
+dato en BD ni la validación de esos campos.
+
 ## Pendiente de confirmación externa (el usuario lo está verificando, no yo)
 
 - **1c** — `trustProxies(at: '*')` en `bootstrap/app.php` confía en cualquier
@@ -78,19 +103,28 @@ confirmaron antes de dar por cerrada la Fase 2.
   ve lo financiero, eso sí se corrigió). El usuario cree que debería
   filtrarse igual que "Mis tareas", pero lo va a decidir con calma. **No
   implementar sin que lo confirme explícitamente.**
+- **Fase 5 (Excel/reportes)** — alternativa **no implementada a propósito**:
+  en vez de (o además de) escapar al exportar, se podría **rechazar al
+  guardar** — validar en `ClientController`/`ProductController` (y en la
+  creación de cliente inline dentro de `ProductionOrderController::store()`)
+  que `first_name`/`last_name`/`address`/`name`/`description` no empiecen con
+  `=`. Esto cambiaría la validación de campos existentes, así que es una
+  decisión de negocio que el usuario prefiere pensar con calma — el fix ya
+  implementado (escapar al exportar) no depende de esto y no cambia lo que un
+  Admin puede escribir.
 
 ## Fase pendiente
 
-- **Fase 4 — Despachos y producción**: auditar la máquina de estados de
-  órdenes/despachos (¿se pueden saltar etapas o forzar transiciones
-  inválidas vía API?). Todavía no iniciada — se retoma cuando el usuario lo
-  pida.
+- **Fase 6 — XSS en campos de texto libre**: revisar si `observations`
+  (orden), `notes` (pago) u otros campos de texto libre se renderizan en
+  algún lugar con `{!! !!}` en vez de `{{ }}` (stored XSS). Candidato
+  propuesto durante la Fase 5, todavía sin auditar.
 
 ## Cómo continuar en una sesión nueva
 
 1. Leer este archivo primero para saber en qué quedó la auditoría.
 2. Antes de tocar código nuevo de seguridad, preguntar si 1c/2c ya se
-   confirmaron y si los 3 commits de Fase 1-3 ya se hicieron push.
+   confirmaron y si el commit de la fase más reciente ya se hizo push.
 3. Seguir el mismo formato por fase: solo auditoría primero (Hallazgo →
    Evidencia → Riesgo → Propuesta, sin tocar código), esperar aprobación
    explícita por punto, implementar, verificar en vivo con datos Factory
