@@ -14,7 +14,7 @@ decisiones de negocio quedaron abiertas sin implementar. Última actualización:
 | 3 | Integridad financiera y autorización a nivel de objeto (IDOR) | `0a07f49` | Pusheado |
 | 4 | Despachos/producción — centralización de guards de estado | `d44e012` | Pusheado |
 | 5 | Inyección de fórmulas en Excel/reportes | `272cbca` | Pusheado |
-| 6 | Inyección JS vía atributos Alpine.js (`@click`, `x-data`) | (pendiente de commit) | Auditado y corregido, sin comitear todavía |
+| 6 | Inyección JS vía atributos Alpine.js (`@click`, `x-data`) | `e14441d` | Pusheado |
 
 El usuario revisa cada commit con `git show` completo antes de aprobar el
 push — **no hacer `git push` sin instrucción explícita**, aunque hayan
@@ -122,20 +122,32 @@ específico no se abriría con la integración tal como está redactada hoy.
 validación **sí son texto libre** — el vector de `clients/index.blade.php`
 sí se volvería explotable por un tercero externo el día que se reactive.
 
-## Pendiente de confirmación externa (el usuario lo está verificando, no yo)
+## Confirmado externamente por el usuario (2026-09-23) — 1c y 2c cerrados
 
-- **1c** — `trustProxies(at: '*')` en `bootstrap/app.php` confía en cualquier
-  proxy para resolver `$request->ip()`. El throttle por IP (login y WebAuthn)
-  depende de que el proxy real de producción sobrescriba `X-Forwarded-For`
-  del cliente en vez de anexarlo. El usuario va a confirmar esto con quien
-  administra el proxy de producción.
-- **2c** — Falta confirmar si `SESSION_SECURE_COOKIE=true` está explícito en
-  el `.env` real de producción (el código no lo fuerza, depende del
-  auto-detect de Laravel según si la request es HTTPS). El usuario lo va a
-  revisar directamente en el servidor.
+Ambos puntos quedaron pendientes de Fase 2 porque requerían acceso a
+producción, que Claude Code no tiene. El usuario los validó directamente
+contra producción, con evidencia real, no solo lectura de configuración:
 
-No asumir un resultado para ninguno de los dos — preguntar si ya se
-confirmaron antes de dar por cerrada la Fase 2.
+- **1c — throttle de login vs. IP falsificada: sin riesgo real, cerrado.**
+  El usuario hizo 8 intentos de login por API conectando directo a la IP
+  del servidor de producción (saltándose Cloudflare) y rotando el header
+  `X-Forwarded-For` en cada intento (`1.1.1.1`, `2.2.2.2`, etc.). El bloqueo
+  `429` se activó igual en el intento 6 y se mantuvo en el 7 y 8, pese a que
+  cada request llevaba una IP falsa distinta. Conclusión: **Traefik
+  sobrescribe el header con la IP real de la conexión TCP** antes de que
+  llegue a Laravel — `trustProxies(at: '*')` es permisivo a nivel de código,
+  pero la capa de proxy real en producción neutraliza la suplantación. No
+  hace falta tocar código.
+- **2c — `SESSION_SECURE_COOKIE`: confirmado, correcto.** El usuario
+  verificó en la respuesta real de producción que las cookies de sesión y
+  CSRF llegan con el flag `Secure` puesto.
+
+Nota aparte, no relacionada con código ni con esta auditoría: al hacer esta
+validación el usuario descubrió que **EasyPanel no tenía auto-deploy
+activo** — las Fases 1-6 llevaban horas en `origin/master` sin llegar a
+producción hasta un deploy manual. Es una decisión de infraestructura que
+el usuario va a tomar por su cuenta (activar auto-deploy o dejarlo manual a
+propósito) — no es algo que Claude Code deba tocar ni asumir.
 
 ## Decisiones de negocio abiertas, documentadas pero sin implementar
 
@@ -167,8 +179,9 @@ cuando el usuario lo pida.
 ## Cómo continuar en una sesión nueva
 
 1. Leer este archivo primero para saber en qué quedó la auditoría.
-2. Antes de tocar código nuevo de seguridad, preguntar si 1c/2c ya se
-   confirmaron y si el commit de la fase más reciente ya se hizo push.
+2. Antes de tocar código nuevo de seguridad, confirmar si el commit de la
+   fase más reciente ya llegó a producción (el deploy es manual — un push a
+   `origin/master` no basta, ver nota de EasyPanel arriba).
 3. Seguir el mismo formato por fase: solo auditoría primero (Hallazgo →
    Evidencia → Riesgo → Propuesta, sin tocar código), esperar aprobación
    explícita por punto, implementar, verificar en vivo con datos Factory
