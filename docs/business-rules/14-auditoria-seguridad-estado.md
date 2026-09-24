@@ -13,7 +13,7 @@ decisiones de negocio quedaron abiertas sin implementar. Última actualización:
 | 2 | Autenticación y control de acceso | `390ce4c` | Pusheado |
 | 3 | Integridad financiera y autorización a nivel de objeto (IDOR) | `0a07f49` | Pusheado |
 | 4 | Despachos/producción — centralización de guards de estado | `d44e012` | Pusheado |
-| 5 | Inyección de fórmulas en Excel/reportes | (pendiente de commit) | Auditado y corregido, sin comitear todavía |
+| 5 | Inyección de fórmulas en Excel/reportes | `272cbca` | Comiteado, sin push |
 
 El usuario revisa cada commit con `git show` completo antes de aprobar el
 push — **no hacer `git push` sin instrucción explícita**, aunque hayan
