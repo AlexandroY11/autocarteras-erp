@@ -50,6 +50,7 @@
     </div>
 
     {{-- ================= RESUMEN FINANCIERO ================= --}}
+    @if(auth()->user()->isAdmin())
     <div class="grid grid-cols-3 gap-3">
         <div class="bg-white border border-gray-100 rounded-2xl p-4">
             <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Precio Producto</p>
@@ -91,6 +92,7 @@
             </p>
         </div>
     </div>
+    @endif
 
     {{-- ================= INFO ORDEN ================= --}}
     <div class="bg-white border border-gray-100 rounded-2xl p-5 space-y-4">
@@ -146,6 +148,7 @@
     </div>
 
     {{-- ================= PAGOS ================= --}}
+    @if(auth()->user()->isAdmin())
     <div class="bg-white border border-gray-100 rounded-2xl p-5 space-y-4">
         <h2 class="flex items-center gap-2 font-semibold text-gray-700 text-sm uppercase tracking-wide">
             <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -155,7 +158,7 @@
         </h2>
 
         {{-- FORM PAGO --}}
-        @if($order->total_balance > 0 && auth()->user()->isAdmin())
+        @if($order->total_balance > 0)
         <form method="POST" action="/payments"
             x-data="{ method: 'efectivo' }"
             @submit="showAlert.confirm($event, '¿Registrar este pago?', 'Sí, registrar')"
@@ -291,6 +294,7 @@
             @endforelse
         </div>
     </div>
+    @endif
 
     {{-- ================= TRAZABILIDAD ================= --}}
     <div class="bg-white border border-gray-100 rounded-2xl p-5">

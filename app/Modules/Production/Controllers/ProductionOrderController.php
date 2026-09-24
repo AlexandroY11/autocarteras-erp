@@ -3,6 +3,7 @@
 namespace App\Modules\Production\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductionOrderResource;
 use App\Models\ProductionOrder;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
 use App\Modules\Production\Services\ProductionOrderService;
@@ -41,9 +42,9 @@ class ProductionOrderController extends Controller
 
     public function show(ProductionOrder $productionOrder): JsonResponse
     {
-        return response()->json(
+        return response()->json(new ProductionOrderResource(
             $productionOrder->load(['client', 'product', 'currentStage', 'orderStages.stage', 'orderStages.assignedTo', 'payments'])
-        );
+        ));
     }
 
     public function update(Request $request, ProductionOrder $productionOrder): JsonResponse
@@ -106,7 +107,7 @@ class ProductionOrderController extends Controller
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 403);
         }
 
-        return response()->json($order);
+        return response()->json(new ProductionOrderResource($order));
     }
 
     public function cancel(ProductionOrder $productionOrder): JsonResponse
