@@ -3,7 +3,7 @@
 Registro de continuidad entre sesiones — para no perder el hilo de qué se
 auditó, qué se corrigió, qué sigue pendiente de confirmación externa y qué
 decisiones de negocio quedaron abiertas sin implementar. Última actualización:
-**2026-09-23**.
+**2026-09-27**.
 
 ## Fases completadas
 
@@ -15,6 +15,7 @@ decisiones de negocio quedaron abiertas sin implementar. Última actualización:
 | 4 | Despachos/producción — centralización de guards de estado | `d44e012` | Pusheado |
 | 5 | Inyección de fórmulas en Excel/reportes | `272cbca` | Pusheado |
 | 6 | Inyección JS vía atributos Alpine.js (`@click`, `x-data`) | `e14441d` | Pusheado |
+| — | Hotfix: deshabilitar `orders/whatsapp` (endpoint vivo sin protección) | `2f6de32` | Pusheado |
 
 El usuario revisa cada commit con `git show` completo antes de aprobar el
 push — **no hacer `git push` sin instrucción explícita**, aunque hayan
@@ -122,6 +123,17 @@ específico no se abriría con la integración tal como está redactada hoy.
 validación **sí son texto libre** — el vector de `clients/index.blade.php`
 sí se volvería explotable por un tercero externo el día que se reactive.
 
+### Hotfix + reactivación de WhatsApp/n8n (2026-09-24 a 2026-09-27)
+Auditando la reactivación de la integración se encontró que
+`WhatsappOrderController::store()` **no estaba pausado** — había una
+segunda implementación activa, sin comentar, debajo del borrador
+comentado, alcanzable por cualquier token autenticado (ver hallazgo de
+abilities arriba). Se deshabilitó la ruta de inmediato (`2f6de32`, commit
+separado, mismo día del hallazgo) antes de diseñar el reemplazo. El
+reemplazo completo (contrato, idempotencia, resolución de cliente, token
+con abilities reales) queda documentado en
+`docs/business-rules/15-integracion-whatsapp.md` — no se repite aquí.
+
 ## Confirmado externamente por el usuario (2026-09-23) — 1c y 2c cerrados
 
 Ambos puntos quedaron pendientes de Fase 2 porque requerían acceso a
@@ -152,9 +164,10 @@ propósito) — no es algo que Claude Code deba tocar ni asumir.
 ## Decisiones de negocio abiertas, documentadas pero sin implementar
 
 - **`docs/business-rules/01-roles-y-permisos.md`** — las abilities de Sanctum
-  son decorativas hoy (todo token se emite con `['*']`). No es urgente
-  mientras la integración WhatsApp/n8n esté pausada, pero debe resolverse
-  antes de conectar cualquier consumidor externo.
+  siguen siendo decorativas para tokens **humanos** (`/api/v1/auth/login`
+  emite `['*']` para Admin/Director/Worker). **Resuelto para el bot de
+  WhatsApp específicamente** — ver `15-integracion-whatsapp.md`. Sigue sin
+  resolver para el resto, fuera de alcance de esa tarea.
 - **`docs/business-rules/01-roles-y-permisos.md`** — `ProductionOrderController::show()`
   (web y API) no filtra por habilidad/etapa del usuario — un Worker/Director
   puede ver el detalle operativo de cualquier orden, no solo las suyas (ya no

@@ -4,337 +4,253 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
-use App\Models\City;
-use App\Models\Department;
-use App\Models\Payment;
+use App\Models\ProductionOrder;
 use App\Models\Product;
+use App\Modules\Payments\DTOs\PaymentDTO;
+use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
 use App\Modules\Production\Services\ProductionOrderService;
 use App\Services\BusinessDaysService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
+/**
+ * Creación de pedidos vía el bot de WhatsApp/n8n. Reemplaza por completo la
+ * implementación anterior (deshabilitada en el hotfix de seguridad del
+ * 2026-09-24): esta reusa ProductionOrderService/PaymentService en vez de
+ * duplicar su lógica, nunca acepta price/shipping_price del payload
+ * (siempre vienen del catálogo), y tiene idempotencia real a nivel de BD.
+ *
+ * Gate: ability 'whatsapp:orders:create' — el token del bot no tiene
+ * ninguna otra ability (no puede leer clientes en bulk, ni pedidos de
+ * otros, ni nada financiero agregado).
+ */
 class WhatsappOrderController extends Controller
 {
     public function __construct(
-        private ProductionOrderService $service,
-        private BusinessDaysService    $businessDays,
+        private ProductionOrderService $productionOrderService,
+        private PaymentService $paymentService,
+        private BusinessDaysService $businessDays,
     ) {}
-
-    // Borrador fase 2 — creación de órdenes vía bot de WhatsApp/n8n. No eliminar.
-    // public function store(Request $request): JsonResponse
-    // {
-    //     $request->validate([
-    //         'client_id'         => 'nullable|exists:clients,id',
-    //         'client_phone'      => 'required|string|max:20',
-
-    //         // Si no viene client_id, TODOS estos son obligatorios
-    //         'client_first_name' => 'required_without:client_id|string|max:100',
-    //         'client_last_name'  => 'required_without:client_id|string|max:100',
-    //         'client_address'    => 'required_without:client_id|string|max:255',
-    //         'client_department' => 'required_without:client_id|string|max:100',
-    //         'client_city'       => 'required_without:client_id|string|max:100',
-
-    //         'product_id'        => 'required|exists:products,id',
-    //         'color'             => 'required|in:Negro,Gris,Beige',
-    //         'sticker'           => 'boolean',
-    //         'sticker_color'     => 'required_if:sticker,true|nullable|string|max:100',
-    //         'observations'      => 'nullable|string',
-    //         'price'             => 'nullable|numeric|min:0',
-    //         'advance_payment'   => 'nullable|numeric|min:0',
-    //         'due_date'          => 'nullable|date',
-    //     ], [
-    //         'client_phone.required'              => 'El teléfono del cliente es obligatorio.',
-    //         'client_first_name.required_without' => 'El nombre del cliente es obligatorio para clientes nuevos.',
-    //         'client_last_name.required_without'  => 'El apellido del cliente es obligatorio para clientes nuevos.',
-    //         'client_address.required_without'    => 'La dirección del cliente es obligatoria para clientes nuevos.',
-    //         'client_department.required_without' => 'El departamento del cliente es obligatorio para clientes nuevos.',
-    //         'client_city.required_without'       => 'La ciudad del cliente es obligatoria para clientes nuevos.',
-    //         'product_id.required'                => 'Debes especificar el producto (product_id).',
-    //         'product_id.exists'                  => 'El producto especificado no existe en el sistema.',
-    //         'client_id.exists'                   => 'El cliente especificado no existe en el sistema.',
-    //         'color.required'                     => 'El color de la cartera es obligatorio.',
-    //         'color.in'                           => 'El color debe ser exactamente: Negro, Gris o Beige.',
-    //         'sticker_color.required_if'          => 'Si lleva calcomanía, debes especificar el color de la calcomanía.',
-    //         'price.numeric'                      => 'El precio debe ser un número.',
-    //         'advance_payment.numeric'            => 'El anticipo debe ser un número.',
-    //         'due_date.date'                      => 'La fecha debe tener formato YYYY-MM-DD.',
-    //     ]);
-
-    //     // ── Resolver cliente ──────────────────────────────────
-    //     if ($request->filled('client_id')) {
-    //         $client = Client::findOrFail($request->client_id);
-    //     } else {
-    //         // Buscar por teléfono primero
-    //         $client = Client::where('phone', $request->client_phone)->first();
-
-    //         if (!$client) {
-    //             $departmentId = null;
-    //             $cityId       = null;
-
-    //             if ($request->filled('client_department')) {
-    //                 $dept = Department::where('name', 'ilike', '%' . $request->client_department . '%')
-    //                     ->first();
-    //                 if ($dept) $departmentId = $dept->id;
-    //             }
-
-    //             if ($request->filled('client_city') && $departmentId) {
-    //                 $city = City::where('department_id', $departmentId)
-    //                     ->where('name', 'ilike', '%' . $request->client_city . '%')
-    //                     ->first();
-    //                 if ($city) $cityId = $city->id;
-    //             }
-
-    //             $client = Client::create([
-    //                 'first_name'    => $request->client_first_name,
-    //                 'last_name'     => $request->client_last_name,
-    //                 'phone'         => $request->client_phone,
-    //                 'address'       => $request->client_address,
-    //                 'department_id' => $departmentId,
-    //                 'city_id'       => $cityId,
-    //                 'active'        => true,
-    //             ]);
-    //         }
-    //     }
-
-    //     // ── Resolver producto y precio ────────────────────────
-    //     $product = Product::findOrFail($request->product_id);
-    //     $price   = $request->price ?? $product->base_price;
-
-    //     // ── Calcular fecha compromiso ─────────────────────────
-    //     $dueDate = $request->filled('due_date')
-    //         ? $request->due_date
-    //         : $this->businessDays->calculateDueDate(15)->toDateString();
-
-    //     // ── Crear orden ───────────────────────────────────────
-    //     $order = $this->service->create(
-    //         ProductionOrderDTO::fromRequest([
-    //             'client_id'       => $client->id,
-    //             'product_id'      => $product->id,
-    //             'color'           => $request->color,
-    //             'sticker'         => $request->boolean('sticker', false),
-    //             'sticker_color'   => $request->sticker_color,
-    //             'observations'    => $request->observations,
-    //             'price'           => $price,
-    //             'advance_payment' => $request->advance_payment ?? 0,
-    //             'due_date'        => $dueDate,
-    //         ]),
-    //         auth()->id()
-    //     );
-
-    //     // ── Registrar anticipo ────────────────────────────────
-    //     if ($request->filled('advance_payment') && $request->advance_payment > 0) {
-    //         Payment::create([
-    //             'production_order_id' => $order->id,
-    //             'amount'              => $request->advance_payment,
-    //             'type'                => 'advance',
-    //             'payment_method'      => 'efectivo',
-    //             'notes'               => 'Anticipo vía WhatsApp',
-    //             'paid_at'             => now()->toDateString(),
-    //             'registered_by'       => auth()->id(),
-    //         ]);
-    //     }
-
-    //     $order->load(['client.city', 'client.department', 'product', 'currentStage', 'payments']);
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Orden #' . $order->consecutive . ' creada correctamente.',
-    //         'order'   => [
-    //             'id'            => $order->id,
-    //             'consecutive'   => str_pad($order->consecutive, 3, '0', STR_PAD_LEFT),
-    //             'client'        => [
-    //                 'id'         => $client->id,
-    //                 'name'       => $client->full_name,
-    //                 'phone'      => $client->phone,
-    //                 'address'    => $client->address,
-    //                 'city'       => $client->city?->name,
-    //                 'department' => $client->department?->name,
-    //                 'is_new'     => $client->wasRecentlyCreated,
-    //             ],
-    //             'product'       => $product->name,
-    //             'color'         => $order->color,
-    //             'sticker'       => $order->sticker,
-    //             'sticker_color' => $order->sticker_color,
-    //             'observations'  => $order->observations,
-    //             'price'         => (float) $order->price,
-    //             'advance'       => (float) $order->payments->sum('amount'),
-    //             'balance'       => (float) ($order->price - $order->payments->sum('amount')),
-    //             'due_date'      => $order->due_date->format('d/m/Y'),
-    //             'due_date_iso'  => $order->due_date->toDateString(),
-    //             'stage'         => $order->currentStage?->name,
-    //             'status'        => $order->status,
-    //             'url'           => url('/production-orders/' . $order->id),
-    //         ],
-    //     ], 201);
-    // }
 
     public function store(Request $request): JsonResponse
     {
-        // ======================================
-        // Validación inicial
-        // ======================================
-        $request->validate([
+        $validated = $request->validate([
+            'idempotency_key' => 'required|string|max:255',
+
+            'client_first_name' => 'required|string|max:100',
+            'client_last_name'  => 'required|string|max:100',
             'client_phone'      => 'required|string|max:20',
+            'client_email'      => 'nullable|email|max:255',
 
-            'product_id'        => 'required|exists:products,id',
+            'city_id'           => [
+                'required',
+                Rule::exists('cities', 'id')->where(
+                    fn ($query) => $query->where('department_id', $request->input('department_id'))
+                ),
+            ],
+            'department_id'     => 'required|exists:departments,id',
+            'address'           => 'required|string|max:255',
 
-            'color'             => 'required|in:Negro,Gris,Beige',
+            'product_id'        => [
+                'required',
+                Rule::exists('products', 'id')->where('active', true),
+            ],
+            'cart_color'        => [
+                'required',
+                Rule::exists('cart_colors', 'name')->where('active', true),
+            ],
 
             'sticker'           => 'boolean',
-            'sticker_color'     => 'required_if:sticker,true|nullable|string|max:100',
-
-            'observations'      => 'nullable|string',
-            'price'             => 'nullable|numeric|min:0',
-            'advance_payment'   => 'nullable|numeric|min:0',
-            'due_date'          => 'nullable|date',
+            'sticker_color'     => 'nullable|string|max:100',
+            'advance_amount'    => 'nullable|numeric|min:0',
         ], [
-            'client_phone.required' => 'El teléfono del cliente es obligatorio.',
-            'product_id.required'   => 'Debes especificar el producto (product_id).',
-            'product_id.exists'     => 'El producto especificado no existe.',
-            'color.required'        => 'El color de la cartera es obligatorio.',
-            'color.in'              => 'El color debe ser exactamente: Negro, Gris o Beige.',
-            'sticker_color.required_if' => 'Si lleva calcomanía, debes especificar el color de la calcomanía.',
-            'price.numeric'         => 'El precio debe ser un número.',
-            'advance_payment.numeric' => 'El anticipo debe ser un número.',
-            'due_date.date'         => 'La fecha debe tener formato YYYY-MM-DD.',
+            'idempotency_key.required'  => 'idempotency_key es obligatorio.',
+            'client_first_name.required'=> 'El nombre del cliente es obligatorio.',
+            'client_last_name.required' => 'El apellido del cliente es obligatorio.',
+            'client_phone.required'     => 'El teléfono del cliente es obligatorio.',
+            'city_id.required'          => 'La ciudad es obligatoria.',
+            'city_id.exists'            => 'La ciudad no existe o no pertenece al departamento indicado.',
+            'department_id.required'    => 'El departamento es obligatorio.',
+            'department_id.exists'      => 'El departamento no existe.',
+            'address.required'          => 'La dirección es obligatoria.',
+            'product_id.required'       => 'Debes especificar el producto (product_id).',
+            'product_id.exists'         => 'El producto no existe o ya no está disponible.',
+            'cart_color.required'       => 'El color es obligatorio.',
+            'cart_color.exists'         => 'Color no disponible — colores válidos: Gris, Negro.',
         ]);
 
-        // ======================================
-        // Resolver cliente
-        // ======================================
-        $client = Client::where('phone', $request->client_phone)->first();
+        // Idempotencia — chequeo rápido antes de intentar nada: cubre el
+        // caso normal (reintento de n8n después de un timeout, no una
+        // carrera real). La constraint única de la BD es el respaldo para
+        // el caso raro de dos llamadas verdaderamente simultáneas.
+        $existing = ProductionOrder::where('idempotency_key', $validated['idempotency_key'])->first();
+        if ($existing) {
+            return $this->respond($existing, 200, true);
+        }
 
-        if (!$client) {
+        [$client, $conflictNote] = $this->resolveClient($validated);
+        $product = Product::findOrFail($validated['product_id']);
+        $dueDate = $this->businessDays->calculateDueDate(15)->toDateString();
 
-            $request->validate([
-                'client_first_name' => 'required|string|max:100',
-                'client_last_name'  => 'required|string|max:100',
-                'client_address'    => 'required|string|max:255',
-                'client_department' => 'required|string|max:100',
-                'client_city'       => 'required|string|max:100',
-            ], [
-                'client_first_name.required' => 'El nombre del cliente es obligatorio para clientes nuevos.',
-                'client_last_name.required'  => 'El apellido del cliente es obligatorio para clientes nuevos.',
-                'client_address.required'    => 'La dirección del cliente es obligatoria para clientes nuevos.',
-                'client_department.required' => 'El departamento del cliente es obligatorio para clientes nuevos.',
-                'client_city.required'       => 'La ciudad del cliente es obligatoria para clientes nuevos.',
-            ]);
+        try {
+            $order = DB::transaction(function () use ($validated, $client, $product, $dueDate, $conflictNote) {
+                $order = $this->productionOrderService->create(
+                    ProductionOrderDTO::fromRequest([
+                        'client_id'       => $client->id,
+                        'product_id'      => $product->id,
+                        'color'           => $validated['cart_color'],
+                        'sticker'         => $validated['sticker'] ?? false,
+                        'sticker_color'   => $validated['sticker_color'] ?? null,
+                        'observations'    => $conflictNote,
+                        'price'           => (float) $product->base_price,
+                        'due_date'        => $dueDate,
+                        'idempotency_key' => $validated['idempotency_key'],
+                        'origin'          => 'whatsapp',
+                    ]),
+                    auth()->id()
+                );
 
-            $departmentId = null;
-            $cityId = null;
-
-            $department = Department::where('name', 'ilike', '%' . $request->client_department . '%')
-                ->first();
-
-            if ($department) {
-                $departmentId = $department->id;
-            }
-
-            if ($departmentId) {
-
-                $city = City::where('department_id', $departmentId)
-                    ->where('name', 'ilike', '%' . $request->client_city . '%')
-                    ->first();
-
-                if ($city) {
-                    $cityId = $city->id;
+                if (! empty($validated['advance_amount']) && $validated['advance_amount'] > 0) {
+                    $this->paymentService->create(
+                        PaymentDTO::fromRequest([
+                            'production_order_id' => $order->id,
+                            'amount'               => $validated['advance_amount'],
+                            'type'                 => 'advance',
+                            'payment_method'       => 'efectivo',
+                            'notes'                => 'Anticipo vía WhatsApp',
+                            'paid_at'              => now()->toDateString(),
+                        ]),
+                        auth()->id()
+                    );
+                    $order->refreshPaymentBreakdown();
                 }
+
+                return $order;
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            // Laravel ya hizo rollback de la transacción antes de que este
+            // catch se ejecute — la consulta de abajo corre limpia, fuera
+            // de la transacción abortada (necesario en Postgres: una vez
+            // que un statement falla, la transacción queda inservible
+            // hasta el rollback).
+            $existing = ProductionOrder::where('idempotency_key', $validated['idempotency_key'])->first();
+            if ($existing) {
+                return $this->respond($existing, 200, true);
+            }
+            throw $e;
+        } catch (\Exception $e) {
+            // PaymentService::create() lanza \Exception genérica con un
+            // código HTTP embebido (ej. 422 si el anticipo supera el saldo)
+            // — sin este catch, Laravel la trata como 500 aunque el mensaje
+            // ya sea específico y accionable. La transacción ya hizo
+            // rollback completo (no queda una orden huérfana sin su pago).
+            Log::error($e);
+
+            $hasHttpCode = $e->getCode() >= 400 && $e->getCode() < 600;
+
+            return response()->json([
+                'success' => false,
+                'message' => $hasHttpCode ? $e->getMessage() : 'Ocurrió un error inesperado al crear el pedido.',
+            ], $hasHttpCode ? $e->getCode() : 500);
+        }
+
+        return $this->respond($order, 201, false);
+    }
+
+    /**
+     * Busca el cliente por teléfono y solo rellena los campos que hoy están
+     * vacíos — nunca sobrescribe un dato ya presente. Si la dirección
+     * recibida difiere de la ya guardada, no se toca el registro del
+     * cliente: se devuelve una nota para que quede en las observations del
+     * pedido nuevo, y un humano decida qué hacer.
+     *
+     * @return array{0: Client, 1: ?string}
+     */
+    private function resolveClient(array $validated): array
+    {
+        $client = Client::where('phone', $validated['client_phone'])->first();
+        $conflictNote = null;
+
+        if ($client) {
+            $updates = [];
+
+            if (blank($client->first_name)) {
+                $updates['first_name'] = $validated['client_first_name'];
+            }
+            if (blank($client->last_name)) {
+                $updates['last_name'] = $validated['client_last_name'];
+            }
+            if (blank($client->email) && ! empty($validated['client_email'])) {
+                $updates['email'] = $validated['client_email'];
+            }
+            if (blank($client->city_id)) {
+                $updates['city_id'] = $validated['city_id'];
+            }
+            if (blank($client->department_id)) {
+                $updates['department_id'] = $validated['department_id'];
             }
 
+            if (blank($client->address)) {
+                $updates['address'] = $validated['address'];
+            } elseif (trim($client->address) !== trim($validated['address'])) {
+                $conflictNote = "Dirección distinta reportada por WhatsApp: \"{$validated['address']}\". "
+                    . "Dirección registrada del cliente sin cambios: \"{$client->address}\".";
+            }
+
+            if ($updates) {
+                $client->update($updates);
+            }
+
+            return [$client, $conflictNote];
+        }
+
+        try {
             $client = Client::create([
-                'first_name'    => $request->client_first_name,
-                'last_name'     => $request->client_last_name,
-                'phone'         => $request->client_phone,
-                'address'       => $request->client_address,
-                'department_id' => $departmentId,
-                'city_id'       => $cityId,
+                'first_name'    => $validated['client_first_name'],
+                'last_name'     => $validated['client_last_name'],
+                'phone'         => $validated['client_phone'],
+                'email'         => $validated['client_email'] ?? null,
+                'address'       => $validated['address'],
+                'city_id'       => $validated['city_id'],
+                'department_id' => $validated['department_id'],
                 'active'        => true,
             ]);
+        } catch (UniqueConstraintViolationException $e) {
+            // Carrera: otra conversación casi simultánea con el mismo
+            // teléfono ya creó el cliente — lo recuperamos en vez de fallar.
+            $client = Client::where('phone', $validated['client_phone'])->firstOrFail();
         }
 
-        // ======================================
-        // Resolver producto
-        // ======================================
-        $product = Product::findOrFail($request->product_id);
+        return [$client, null];
+    }
 
-        // ======================================
-        // Resolver precio
-        // ======================================
-        $price = $request->price ?? $product->base_price;
+    private function respond(ProductionOrder $order, int $status, bool $isReplay): JsonResponse
+    {
+        $order->loadMissing(['client.city', 'client.department', 'product', 'currentStage', 'payments']);
 
-        // ======================================
-        // Calcular fecha compromiso
-        // ======================================
-        $dueDate = $request->filled('due_date')
-            ? $request->due_date
-            : $this->businessDays->calculateDueDate(15)->toDateString();
-
-        // ======================================
-        // Crear orden
-        // ======================================
-        $order = $this->service->create(
-            ProductionOrderDTO::fromRequest([
-                'client_id'       => $client->id,
-                'product_id'      => $product->id,
-                'color'           => $request->color,
-                'sticker'         => $request->boolean('sticker', false),
-                'sticker_color'   => $request->sticker_color,
-                'observations'    => $request->observations,
-                'price'           => $price,
-                'due_date'        => $dueDate,
-            ]),
-            auth()->id()
-        );
-
-        // ======================================
-        // Registrar anticipo
-        // ======================================
-        if ($request->filled('advance_payment') && $request->advance_payment > 0) {
-
-            Payment::create([
-                'production_order_id' => $order->id,
-                'amount'              => $request->advance_payment,
-                'type'                => 'advance',
-                'payment_method'      => 'efectivo',
-                'notes'               => 'Anticipo vía WhatsApp',
-                'paid_at'             => now()->toDateString(),
-                'registered_by'       => auth()->id(),
-            ]);
-        }
-
-        // ======================================
-        // Cargar relaciones
-        // ======================================
-        $order->load([
-            'client.city',
-            'client.department',
-            'product',
-            'currentStage',
-            'payments',
-        ]);
-
-        // ======================================
-        // Respuesta
-        // ======================================
         return response()->json([
-            'success' => true,
-            'message' => 'Orden #' . $order->consecutive . ' creada correctamente.',
+            'success'           => true,
+            'idempotent_replay' => $isReplay,
+            'message'           => 'Orden #' . $order->consecutive . ' creada correctamente.',
             'order' => [
                 'id'            => $order->id,
                 'consecutive'   => str_pad($order->consecutive, 3, '0', STR_PAD_LEFT),
 
                 'client' => [
-                    'id'         => $client->id,
-                    'name'       => $client->full_name,
-                    'phone'      => $client->phone,
-                    'address'    => $client->address,
-                    'city'       => $client->city?->name,
-                    'department' => $client->department?->name,
-                    'is_new'     => $client->wasRecentlyCreated,
+                    'id'         => $order->client->id,
+                    'name'       => $order->client->full_name,
+                    'phone'      => $order->client->phone,
+                    'address'    => $order->client->address,
+                    'city'       => $order->client->city?->name,
+                    'department' => $order->client->department?->name,
                 ],
 
-                'product'       => $product->name,
+                'product'       => $order->product->name,
                 'color'         => $order->color,
                 'sticker'       => $order->sticker,
                 'sticker_color' => $order->sticker_color,
@@ -352,6 +268,6 @@ class WhatsappOrderController extends Controller
 
                 'url'           => url('/production-orders/' . $order->id),
             ],
-        ], 201);
+        ], $status);
     }
 }

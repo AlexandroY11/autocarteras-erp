@@ -52,6 +52,8 @@ class ProductionOrder extends Model
         'status',
         'dispatch_status',
         'created_by',
+        'idempotency_key',
+        'origin',
     ];
 
     protected $casts = [

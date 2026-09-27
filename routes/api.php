@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\WhatsappCatalogController;
+use App\Http\Controllers\Api\WhatsappOrderController;
 use App\Models\Holiday;
 use App\Modules\Clients\Controllers\ClientController;
 use App\Modules\Products\Controllers\ProductController;
@@ -13,6 +15,20 @@ Route::prefix('v1')->name('api.')->group(function () {
     });
     Route::middleware(['auth:sanctum', 'ability:clients:read'])->group(function () {
         Route::get('clients/search',  [ClientController::class, 'search']);
+    });
+
+    // Bot de WhatsApp/n8n — token con abilities explícitas y mínimas
+    // (whatsapp:catalog:read, whatsapp:orders:create), emitido vía el
+    // comando `whatsapp:provision-token`, nunca por /auth/login. No puede
+    // alcanzar ningún otro endpoint ability-gateado de esta API.
+    Route::prefix('whatsapp')->middleware('auth:sanctum')->group(function () {
+        Route::middleware('ability:whatsapp:catalog:read')->group(function () {
+            Route::get('catalog', [WhatsappCatalogController::class, 'products']);
+            Route::get('locations', [WhatsappCatalogController::class, 'locations']);
+        });
+        Route::middleware('ability:whatsapp:orders:create')->group(function () {
+            Route::post('orders', [WhatsappOrderController::class, 'store']);
+        });
     });
 
     require base_path('app/Modules/Auth/Routes/api.php');
@@ -34,18 +50,6 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->pluck('date')
         );
     });
-
-    // HOTFIX DE SEGURIDAD (2026-09-24) — deshabilitada a propósito. Este
-    // endpoint estaba vivo (no comentado, a diferencia de lo que se asumía)
-    // y alcanzable por cualquier token autenticado (sin ability específica,
-    // y las abilities de Sanctum son decorativas hoy — ver hallazgo de
-    // Fase 2 de la auditoría de seguridad). Sin idempotencia, aceptaba
-    // 'price' directo del payload en vez de tomarlo siempre del catálogo,
-    // y registraba el anticipo con Payment::create() directo sin el
-    // chequeo de saldo que sí tiene PaymentService::create(). Se reactiva
-    // reemplazada por el nuevo diseño (docs/business-rules/14-auditoria-
-    // seguridad-estado.md), no como parche de esta misma implementación.
-    // Route::post('orders/whatsapp', [WhatsappOrderController::class, 'store']);
 
     Route::get('utils/due-date', function () {
         $service = app(BusinessDaysService::class);
