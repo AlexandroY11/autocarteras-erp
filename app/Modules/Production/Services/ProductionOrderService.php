@@ -7,7 +7,9 @@ use App\Models\ProductionOrder;
 use App\Models\Stage;
 use App\Models\User;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
+use App\Services\Mail\MailService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class ProductionOrderService
 {
@@ -64,6 +66,41 @@ class ProductionOrderService
         }
 
         return $order->load(['client', 'product', 'currentStage']);
+    }
+
+    /**
+     * Notifica al cliente que su orden fue creada — único punto de envío
+     * para los dos canales (web y bot de WhatsApp), que antes solo existía
+     * en el controller web.
+     *
+     * No vive dentro de create() a propósito: la plantilla del correo
+     * muestra total_paid/total_balance, que solo son correctos después de
+     * registrar el anticipo (que ambos canales crean después de create()).
+     * Debe llamarse además fuera de la transacción: un correo enviado
+     * dentro de una que luego revierte le avisaría al cliente de un pedido
+     * que dejó de existir.
+     *
+     * Ojo con qué significa "enviar" acá: OrderCreatedMail implementa
+     * ShouldQueue, así que el ->send() de MailService en realidad **encola**
+     * — Mailer::sendMailable() deriva a ->queue() cuando el Mailable es
+     * ShouldQueue (vendor/laravel/framework/src/Illuminate/Mail/Mailer.php:349-354).
+     * La entrega real la hace el worker después, fuera de este request.
+     *
+     * Nunca propaga una excepción: para cuando esto corre, el pedido ya
+     * está comiteado, así que un problema con el correo no puede
+     * convertirse en un error de la respuesta. MailService ya captura lo que
+     * falle al encolar, pero no el claim de created_notified_at (escritura
+     * a BD) ni Log::build() (escribe en storage/logs/mail/).
+     */
+    public function notifyCreated(ProductionOrder $order): bool
+    {
+        try {
+            return MailService::orderCreated($order);
+        } catch (\Throwable $e) {
+            Log::error("notifyCreated: falló la notificación de la orden #{$order->consecutive} (id={$order->id}) — ".get_class($e).': '.$e->getMessage());
+
+            return false;
+        }
     }
 
     public function update(ProductionOrder $order, ProductionOrderDTO $dto): ProductionOrder

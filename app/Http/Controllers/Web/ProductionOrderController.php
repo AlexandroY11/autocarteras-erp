@@ -15,6 +15,7 @@ use App\Modules\Production\DTOs\ProductionOrderDTO;
 use App\Modules\Production\Services\ProductionOrderService;
 use App\Services\Mail\MailService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductionOrderController extends Controller
 {
@@ -112,11 +113,12 @@ class ProductionOrderController extends Controller
         ]);
 
         // NOTA: 'advance_payment' se valida aquí y se usa más abajo para crear
-        // el Payment inicial directamente (líneas ~148-159) — no forma parte
-        // del DTO/columna de production_orders, que ya no la tiene.
-        if ($request->filled('client_id')) {
-            $clientId = $request->client_id;
-        } else {
+        // el Payment inicial directamente — no forma parte del DTO/columna de
+        // production_orders, que ya no la tiene.
+        //
+        // Este chequeo queda fuera de la transacción a propósito: devuelve una
+        // respuesta de validación, no participa de la escritura.
+        if (! $request->filled('client_id')) {
             $existingClient = Client::where('phone', $request->client_phone)->first();
 
             if ($existingClient) {
@@ -124,49 +126,60 @@ class ProductionOrderController extends Controller
                     'client_phone' => "El teléfono ya pertenece a: {$existingClient->first_name} {$existingClient->last_name}. Búscalo en el selector de arriba.",
                 ]);
             }
-
-            $client = Client::create([
-                'first_name' => $request->client_first_name,
-                'last_name' => $request->client_last_name,
-                'phone' => $request->client_phone,
-                'email' => $request->client_email,
-                'address' => $request->client_address,
-                'department_id' => $request->client_department,
-                'city_id' => $request->client_city,
-                'active' => true,
-            ]);
-            $clientId = $client->id;
         }
 
-        // CREAR DTO Y ORDEN
-        $dto = ProductionOrderDTO::fromRequest([
-            'client_id' => $clientId,
-            'product_id' => $request->product_id,
-            'color' => $request->color,
-            'sticker' => $request->boolean('sticker'),
-            'sticker_color' => $request->sticker_color,
-            'observations' => $request->observations,
-            'price' => $request->price,
-            'due_date' => $request->due_date,
-        ]);
+        // Cliente + orden + anticipo en una sola transacción. Antes eran 3
+        // operaciones sueltas: si fallaba el anticipo, la orden (y el cliente
+        // nuevo) quedaban escritos de todas formas, sin rollback. Mismo patrón
+        // que ya usaba WhatsappOrderController para el mismo flujo.
+        $order = DB::transaction(function () use ($request) {
+            $clientId = $request->filled('client_id')
+                ? $request->client_id
+                : Client::create([
+                    'first_name' => $request->client_first_name,
+                    'last_name' => $request->client_last_name,
+                    'phone' => $request->client_phone,
+                    'email' => $request->client_email,
+                    'address' => $request->client_address,
+                    'department_id' => $request->client_department,
+                    'city_id' => $request->client_city,
+                    'active' => true,
+                ])->id;
 
-        $order = $this->service->create($dto, auth()->id());
+            $order = $this->service->create(
+                ProductionOrderDTO::fromRequest([
+                    'client_id' => $clientId,
+                    'product_id' => $request->product_id,
+                    'color' => $request->color,
+                    'sticker' => $request->boolean('sticker'),
+                    'sticker_color' => $request->sticker_color,
+                    'observations' => $request->observations,
+                    'price' => $request->price,
+                    'due_date' => $request->due_date,
+                ]),
+                auth()->id()
+            );
 
-        // REGISTRAR ANTICIPO (Si aplica)
-        if ($request->filled('advance_payment') && $request->advance_payment > 0) {
-            Payment::create([
-                'production_order_id' => $order->id,
-                'amount' => $request->advance_payment,
-                'type' => 'advance',
-                'payment_method' => 'efectivo',
-                'notes' => 'Anticipo inicial',
-                'paid_at' => now()->toDateString(),
-                'registered_by' => auth()->id(),
-            ]);
-        }
+            if ($request->filled('advance_payment') && $request->advance_payment > 0) {
+                Payment::create([
+                    'production_order_id' => $order->id,
+                    'amount' => $request->advance_payment,
+                    'type' => 'advance',
+                    'payment_method' => 'efectivo',
+                    'notes' => 'Anticipo inicial',
+                    'paid_at' => now()->toDateString(),
+                    'registered_by' => auth()->id(),
+                ]);
+            }
 
+            return $order;
+        });
+
+        // Fuera de la transacción y después del anticipo — ver el docblock de
+        // ProductionOrderService::notifyCreated() para por qué este orden
+        // importa.
         $order->load(['client', 'product', 'payments']);
-        $emailSent = MailService::orderCreated($order);
+        $emailSent = $this->service->notifyCreated($order);
 
         $msg = 'Orden #'.str_pad($order->consecutive, 3, '0', STR_PAD_LEFT).' creada correctamente.';
         $msg .= $emailSent ? ' Se notificó al cliente por correo.' : ' El cliente no tiene correo registrado.';

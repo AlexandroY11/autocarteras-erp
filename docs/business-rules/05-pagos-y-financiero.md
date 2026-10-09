@@ -27,6 +27,24 @@ El monto que se anota como "a cobrar contraentrega" en la guía es el **saldo de
 
 `DispatchService::markDelivered()` — si al marcar una orden como entregada queda saldo de producto pendiente, se genera **automáticamente** un `Payment` con `type = 'cod'` por ese monto exacto. Es **idempotente**: verifica primero si ya existe un pago `cod` para ese despacho específico (`Payment::where('order_dispatch_id', $dispatch->id)->where('type', 'cod')->exists()`) antes de crear uno nuevo — marcar "entregado" dos veces (por error, doble clic, reintento) nunca duplica el cobro.
 
+## Hallazgo abierto — el anticipo inicial del formulario web no pasa por `PaymentService`
+
+`ProductionOrderController::store()` (web) crea el anticipo inicial del
+pedido con `Payment::create()` directo, no con `PaymentService::create()`:
+
+- **Se salta el chequeo de "no pagar más que el saldo"** que sí aplica
+  `PaymentService::create()` — por el formulario de creación manual entra sin
+  protesta un anticipo mayor al total del pedido.
+- **Hardcodea `payment_method = 'efectivo'`**, aunque el formulario de pagos
+  normal (`PaymentController::store()`) sí exige elegir entre los 3 métodos
+  válidos. El canal de WhatsApp ya acepta `payment_method` (ver
+  `15-integracion-whatsapp.md`); el formulario manual todavía no.
+
+Es el mismo patrón que tenía el bot antes de la Fase 2 de esa integración.
+**Pendiente para una fase posterior, por decisión del usuario — no corregido
+a propósito:** tocarlo cambia el flujo de creación manual de pedidos, que es
+de alcance distinto al de la integración.
+
 ## Qué queda sin definir
 
 - No hay política de qué pasa si el recaudo real contraentrega fue distinto al `collected_amount` calculado (ej. el cliente pagó de más o de menos en la puerta) — no asumir un mecanismo de ajuste, preguntar.

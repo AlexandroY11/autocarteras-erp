@@ -67,7 +67,9 @@ class WhatsappOrderController extends Controller
 
             'sticker'           => 'boolean',
             'sticker_color'     => 'nullable|string|max:100',
+            'observations'      => 'nullable|string|max:1000',
             'advance_amount'    => 'nullable|numeric|min:0',
+            'payment_method'    => 'nullable|in:efectivo,nequi,nu',
         ], [
             'idempotency_key.required'  => 'idempotency_key es obligatorio.',
             'client_first_name.required'=> 'El nombre del cliente es obligatorio.',
@@ -82,6 +84,7 @@ class WhatsappOrderController extends Controller
             'product_id.exists'         => 'El producto no existe o ya no está disponible.',
             'cart_color.required'       => 'El color es obligatorio.',
             'cart_color.exists'         => 'Color no disponible — colores válidos: Gris, Negro.',
+            'payment_method.in'         => 'Método de pago no válido — valores válidos: efectivo, nequi, nu.',
         ]);
 
         // Idempotencia — chequeo rápido antes de intentar nada: cubre el
@@ -97,8 +100,25 @@ class WhatsappOrderController extends Controller
         $product = Product::findOrFail($validated['product_id']);
         $dueDate = $this->businessDays->calculateDueDate(15)->toDateString();
 
+        // observations es una sola columna de texto compartida: el texto que
+        // dictó el vendedor va primero y la nota automática de conflicto de
+        // dirección después, separados por una línea en blanco. Ninguna pisa
+        // a la otra.
+        //
+        // filled() en vez de array_filter() a secas, y el null explícito en
+        // vez de un `?: null` al final: ambas cosas son para no perder un
+        // "0" literal dictado por el vendedor, que es falsy en PHP.
+        $observationParts = array_filter(
+            [$validated['observations'] ?? null, $conflictNote],
+            fn ($part) => filled($part),
+        );
+
+        $observations = $observationParts === []
+            ? null
+            : implode("\n\n", $observationParts);
+
         try {
-            $order = DB::transaction(function () use ($validated, $client, $product, $dueDate, $conflictNote) {
+            $order = DB::transaction(function () use ($validated, $client, $product, $dueDate, $observations) {
                 $order = $this->productionOrderService->create(
                     ProductionOrderDTO::fromRequest([
                         'client_id'       => $client->id,
@@ -106,7 +126,7 @@ class WhatsappOrderController extends Controller
                         'color'           => $validated['cart_color'],
                         'sticker'         => $validated['sticker'] ?? false,
                         'sticker_color'   => $validated['sticker_color'] ?? null,
-                        'observations'    => $conflictNote,
+                        'observations'    => $observations,
                         'price'           => (float) $product->base_price,
                         'due_date'        => $dueDate,
                         'idempotency_key' => $validated['idempotency_key'],
@@ -121,7 +141,7 @@ class WhatsappOrderController extends Controller
                             'production_order_id' => $order->id,
                             'amount'               => $validated['advance_amount'],
                             'type'                 => 'advance',
-                            'payment_method'       => 'efectivo',
+                            'payment_method'       => $validated['payment_method'] ?? 'efectivo',
                             'notes'                => 'Anticipo vía WhatsApp',
                             'paid_at'              => now()->toDateString(),
                         ]),
@@ -158,6 +178,15 @@ class WhatsappOrderController extends Controller
                 'message' => $hasHttpCode ? $e->getMessage() : 'Ocurrió un error inesperado al crear el pedido.',
             ], $hasHttpCode ? $e->getCode() : 500);
         }
+
+        // Solo en el camino de creación nueva: los dos replays idempotentes
+        // (200) ya retornaron antes de llegar acá, así que un reintento de
+        // n8n no reenvía el correo. MailService::orderCreated() tiene además
+        // su propio claim atómico sobre created_notified_at como respaldo.
+        // El resultado no se refleja en la respuesta a propósito — el
+        // contrato del endpoint no cambia, y un fallo de correo no puede
+        // alterar el 201 de un pedido ya comiteado.
+        $this->productionOrderService->notifyCreated($order);
 
         return $this->respond($order, 201, false);
     }

@@ -34,7 +34,7 @@ endpoint financiero, aunque comparta el mismo guard `auth:sanctum`.
 campo.
 
 **Opcionales:** `client_email`, `sticker` (boolean), `sticker_color` (texto
-libre), `advance_amount`.
+libre), `advance_amount`, `observations`, `payment_method`.
 
 **Nunca se acepta `price` ni `shipping_price` del payload** — si vinieran,
 se ignoran. Ambos siempre son el snapshot del catálogo en el momento de
@@ -54,6 +54,59 @@ esto es más estricto que el formulario web de creación de pedidos
 (`orders/form.blade.php`), que todavía ofrece "Beige" como tercera opción
 hardcodeada aunque esa tabla nunca la tuvo — ver hallazgo ya documentado en
 `08-catalogo-y-colores.md`. No se tocó esa inconsistencia aquí.
+
+## `observations` — texto del vendedor + nota automática en la misma columna
+
+Opcional, `string`, máximo 1000 caracteres. `production_orders.observations`
+es **una sola columna de texto**, compartida con la nota automática que
+escribe la resolución de cliente cuando la dirección recibida difiere de la
+ya guardada (ver la sección siguiente). Las dos conviven en este orden fijo:
+
+1. El texto que dictó el vendedor (`observations` del payload).
+2. Una línea en blanco.
+3. La nota automática de conflicto de dirección, si la hubo.
+
+Si solo existe una de las dos, va sola y sin separador. Si no hay ninguna, la
+columna queda en `NULL`, nunca en cadena vacía.
+
+## `payment_method` del anticipo
+
+Opcional, validado contra los mismos 3 valores que acepta el resto del ERP:
+`efectivo`, `nequi`, `nu` — es el `CHECK` real de `payments.payment_method`
+(migración `2026_09_22_000001_add_nu_to_payments_payment_method_enum.php`),
+no una lista inventada acá. Si el vendedor no dicta el método, el anticipo
+queda en `efectivo`, que es lo que este endpoint hacía fijo antes. Solo
+aplica cuando viene `advance_amount`: sin anticipo no se crea ningún pago, y
+`payment_method` se ignora.
+
+## Correo al crear el pedido
+
+Un pedido creado por el bot dispara **el mismo correo** que uno creado a mano
+en el ERP. Antes no lo hacía: el envío vivía solo en el controller web, así
+que el canal de WhatsApp lo salteaba en silencio aunque el cliente tuviera
+correo registrado.
+
+La regla es exactamente la del flujo manual, sin variantes: **se envía si el
+cliente tiene correo guardado en el momento de crear la orden.** No depende
+de que el mensaje de WhatsApp haya traído `client_email` esa vez — si el
+correo ya estaba en la ficha del cliente de antes, se envía igual.
+
+Único punto de envío: `ProductionOrderService::notifyCreated()`, llamado por
+los dos canales **después** de registrar el anticipo y **después** del commit
+de la transacción (la plantilla muestra el total pagado y el saldo, que antes
+de eso no serían correctos). Un replay idempotente (`200`) no reenvía el
+correo, y un fallo de envío nunca altera el `201` de un pedido ya comiteado.
+
+**El correo se encola, no se envía en el request.** `OrderCreatedMail`
+implementa `ShouldQueue`, y `Mailer::sendMailable()`
+(`vendor/laravel/framework/src/Illuminate/Mail/Mailer.php:349-354`) deriva a
+`->queue()` cuando el Mailable es `ShouldQueue`, aunque `MailService` llame
+a `->send()`. Consecuencias reales: la entrega la hace el worker de cola
+(`QUEUE_CONNECTION=redis`), así que **sin worker corriendo el correo no
+llega** aunque el pedido se cree bien; y el `true`/`false` que devuelve
+`MailService` significa "se encoló", no "se entregó". Esto ya era así para
+los pedidos manuales — no cambió con esta fase, pero conviene tenerlo
+explícito.
 
 ## Resolución de cliente por teléfono
 
