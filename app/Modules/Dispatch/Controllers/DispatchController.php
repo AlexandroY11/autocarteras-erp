@@ -16,10 +16,16 @@ class DispatchController extends Controller
     {
         $validated = $request->validate([
             'guide_number' => 'nullable|string|max:255',
+            'confirm_unpaid_shipping' => 'boolean',
         ]);
 
         try {
-            $dispatch = $this->service->dispatch($productionOrder, $validated['guide_number'] ?? null, $request->user());
+            $dispatch = $this->service->dispatch(
+                $productionOrder,
+                $validated['guide_number'] ?? null,
+                $request->user(),
+                $request->boolean('confirm_unpaid_shipping'),
+            );
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
         }

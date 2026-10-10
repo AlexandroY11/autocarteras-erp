@@ -11,6 +11,8 @@ class OrderDispatch extends Model
         'production_order_id',
         'guide_number',
         'collected_amount',
+        'shipped_with_pending_shipping',
+        'pending_shipping_amount',
         'dispatched_at',
         'dispatched_by',
         'sent_at',
@@ -24,6 +26,8 @@ class OrderDispatch extends Model
 
     protected $casts = [
         'collected_amount' => 'decimal:2',
+        'shipped_with_pending_shipping' => 'boolean',
+        'pending_shipping_amount'       => 'decimal:2',
         'dispatched_at'    => 'datetime',
         'sent_at'          => 'datetime',
         'delivered_at'     => 'datetime',

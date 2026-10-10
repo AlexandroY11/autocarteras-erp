@@ -23,6 +23,16 @@
                     Calendario
                 </a>
 
+                {{-- Bolsillo de envíos pendientes — solo lectura, solo Admin
+                     (la ruta además está bajo el middleware admin). --}}
+                <a href="/orders/pending-shipping-wallet"
+                class="flex items-center gap-2 bg-amber-600 text-white font-bold px-4 py-2.5 rounded-2xl text-sm shadow-md shadow-amber-100 active:scale-95 transition-all">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"/>
+                    </svg>
+                    Bolsillo
+                </a>
+
                 {{-- Acceso directo al reporte "Seguimiento operativo" --}}
                 <a href="/reports/operational"
                 class="flex items-center gap-2 bg-gray-800 text-white font-bold px-4 py-2.5 rounded-2xl text-sm shadow-md shadow-gray-200 active:scale-95 transition-all">

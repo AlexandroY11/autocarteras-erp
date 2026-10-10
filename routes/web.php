@@ -63,6 +63,11 @@ Route::middleware('auth')->group(function () {
 
     // ── Solo admin ───────────────────────────────────────────────
     Route::middleware('admin')->group(function () {
+        // Bolsillo de envíos pendientes — solo lectura. Verificado también
+        // en el controller (abort_unless), no solo por este middleware.
+        Route::get('/orders/pending-shipping-wallet',
+            [OrderController::class, 'pendingShippingWallet']);
+
         // Órdenes de producción — create debe ir antes de {id}
         Route::get('/production-orders',
             [ProductionOrderController::class, 'index']);

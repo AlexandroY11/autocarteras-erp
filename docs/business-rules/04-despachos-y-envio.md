@@ -12,14 +12,87 @@ El registro de guía y estados de despacho es **manual** — un Admin escribe el
 
 `DispatchService::dispatch()` crea una fila nueva en `order_dispatches` (`$order->orderDispatches()->create([...])`) cada vez que una orden se despacha — incluyendo un redespacho después de una devolución. El historial completo de despachos de una orden queda intacto; `ProductionOrder::latestDispatch()` resuelve el más reciente por `dispatched_at`, pero las filas anteriores nunca se borran ni se modifican para "limpiar" el historial.
 
-## Bloqueo por saldo de envío pendiente
+## Saldo de envío pendiente: confirmación explícita, no bloqueo (regla 16)
 
-`DispatchService::dispatch()` bloquea el despacho si `shipping_balance > 0`:
-```php
-if ($order->shipping_balance > 0) {
-    throw new \Exception("No se puede despachar: falta cubrir el envío...", 422);
-}
-```
+**Cambió por decisión del dueño del negocio (2026-10-09).** Antes,
+`DispatchService::dispatch()` bloqueaba el despacho de forma absoluta si
+`shipping_balance > 0`. Ahora **se puede despachar con el envío sin pagar,
+pero solo confirmando explícitamente**:
+
+- Sin confirmación y con saldo de envío pendiente → `422` (mismo mecanismo
+  de excepción con código HTTP que el resto del servicio).
+- Con confirmación → el despacho procede y **queda constancia en la guía**:
+  `order_dispatches.shipped_with_pending_shipping = true` y
+  `pending_shipping_amount` con el snapshot del saldo en ese momento (no se
+  recalcula después).
+- La confirmación viaja como `confirm_unpaid_shipping` y **la exige el
+  backend**, no el formulario: `DispatchService::dispatch()` rechaza el
+  despacho si el flag no llega. En la web el flag lo acompaña el diálogo; la
+  validación de servidor es lo que cubre a la API y a cualquier otro
+  llamador que intente despachar sin confirmar.
+- **Web y API usan la misma lógica**: los dos controllers solo validan el
+  campo y lo pasan al servicio. La regla no está reimplementada en ninguno.
+
+En la web, el formulario de despacho de `orders/show.blade.php` muestra el
+aviso del saldo y pide confirmación con el diálogo *"¿Seguro que quieres
+despachar sin que se haya pagado el envío?"*.
+
+**Quién confirmó no tiene columna propia a propósito:** la confirmación y el
+despacho son la misma acción, en el mismo request, del mismo Admin que ya
+queda registrado en `dispatched_by`.
+
+**Las filas de despacho anteriores no se tocan.** Cada despacho sigue siendo
+una fila nueva (ver la sección de arriba), así que el historial de una orden
+redespachada conserva cada intento con su propia bandera.
+
+**El cobro posterior de ese envío no está definido todavía** — se decide en
+la fase 3 (nómina). No asumir ningún mecanismo de cobro, recordatorio ni
+descuento.
+
+### Punto de entrada que **no** puede confirmar: el swipe de la lista
+
+`orders/index.blade.php` tiene un segundo acceso al despacho (swipe sobre la
+tarjeta, formulario oculto con solo `@csrf`, líneas ~157-199) que postea a la
+misma ruta. Ese camino **no manda `confirm_unpaid_shipping`**, así que un
+pedido con envío pendiente despachado por swipe recibe el `422` y el Admin
+tiene que entrar al detalle del pedido para confirmar. No es una regresión
+(antes ese swipe también fallaba, por el bloqueo duro), pero sí una
+limitación conocida: el diálogo pedido por el dueño se implementó en el
+detalle del pedido, no en el swipe.
+
+## Bolsillo de envíos pendientes
+
+Vista de **solo lectura, exclusiva de Admin** (`/orders/pending-shipping-wallet`,
+botón "Bolsillo" en el header de Órdenes). Es una **consulta derivada: no hay
+tabla ni estado propio.**
+
+Qué lista: pedidos que **salieron despachados con el envío sin pagar** y
+siguen debiéndolo. El filtro es por la bandera histórica del despacho
+(`whereHas('orderDispatches', shipped_with_pending_shipping = true)`), **no
+por `dispatch_status`** — decisión deliberada: un pedido devuelto que vuelve
+a `pending_dispatch` con el envío sin pagar **debe seguir en el bolsillo**, y
+filtrando por estado desaparecería. `whereHas()` es una prueba de
+existencia, así que un pedido redespachado varias veces aparece una sola vez.
+
+Exclusiones: pedidos cancelados y pedidos con `shipping_price = NULL` (estos
+últimos por doble motivo — nunca reciben la bandera, porque su
+`shipping_balance` siempre da 0, y además la consulta los filtra de forma
+explícita).
+
+Los devueltos se muestran con su etiqueta de estado
+(`ProductionOrder::DISPATCH_STATUS_LABELS`, "Devuelto"), no con un
+vocabulario nuevo.
+
+**Sale del bolsillo solo.** `shipping_balance` se recalcula desde los pagos
+en cada consulta (no hay estado guardado), así que registrar el pago del
+envío basta para que el pedido desaparezca — no hay nada que marcar a mano.
+Por lo mismo la vista no tiene ninguna acción: no hay "marcar pagado" ni
+swipe. Eso se define en la fase 3.
+
+El último filtro (`shipping_balance > 0`) se aplica en PHP porque
+`shipping_balance` es un accessor calculado por `PaymentAllocationService`,
+no una columna — replicarlo en SQL duplicaría la regla de "el envío se cubre
+primero".
 
 ### Hallazgo pendiente de decisión — `shipping_price = NULL` se trata como 0 (gratis), no como "desconocido"
 

@@ -11,22 +11,39 @@ class DispatchService
 {
     /**
      * Genera una guía nueva. Exige que la orden esté lista para despachar
-     * (pending_dispatch) y que el envío ya esté cubierto (shipping_balance <= 0).
-     * El recaudo de la guía se deriva del saldo de producto en este momento,
-     * no lo escribe el usuario.
+     * (pending_dispatch). El recaudo de la guía se deriva del saldo de
+     * producto en este momento, no lo escribe el usuario.
      *
      * El número de guía es opcional aquí a propósito: cambiar de estado y
      * capturar la guía son dos pasos independientes (ver setGuideNumber()).
+     *
+     * Saldo de envío pendiente (regla 16, cambiada por decisión del dueño
+     * del negocio): ya no bloquea de forma absoluta, pero exige
+     * confirmación explícita. Sin ella se rechaza con 422; con ella el
+     * despacho procede y queda constancia en la guía de que salió con el
+     * envío sin pagar y por cuánto. Los dos canales (web y API) pasan por
+     * acá — la regla no se reimplementa en ningún controller.
+     *
+     * Ojo: shipping_price = NULL sigue significando "no definido", no
+     * "debe". Eso no cambia acá, porque PaymentAllocationService lo trata
+     * como 0 y entonces shipping_balance nunca da > 0 para esas órdenes.
      */
-    public function dispatch(ProductionOrder $order, ?string $guideNumber, User $user): OrderDispatch
-    {
+    public function dispatch(
+        ProductionOrder $order,
+        ?string $guideNumber,
+        User $user,
+        bool $confirmUnpaidShipping = false,
+    ): OrderDispatch {
         if ($order->dispatch_status !== 'pending_dispatch') {
             throw new \Exception('La orden no está lista para despachar.', 422);
         }
 
-        if ($order->shipping_balance > 0) {
+        $shippingBalance = $order->shipping_balance;
+        $shippingPending = $shippingBalance > 0;
+
+        if ($shippingPending && ! $confirmUnpaidShipping) {
             throw new \Exception(
-                "No se puede despachar: falta cubrir el envío (saldo de envío: {$order->shipping_balance}).",
+                "No se puede despachar sin confirmación explícita: falta cubrir el envío (saldo de envío: {$shippingBalance}).",
                 422
             );
         }
@@ -36,6 +53,8 @@ class DispatchService
         $dispatch = $order->orderDispatches()->create([
             'guide_number'     => $guideNumber,
             'collected_amount' => $collectedAmount,
+            'shipped_with_pending_shipping' => $shippingPending,
+            'pending_shipping_amount'       => $shippingPending ? $shippingBalance : null,
             'dispatched_at'    => now(),
             'dispatched_by'    => $user->id,
         ]);

@@ -21,7 +21,7 @@
 ```php
 $collectedAmount = $order->product_balance > 0 ? $order->product_balance : null;
 ```
-El monto que se anota como "a cobrar contraentrega" en la guía es el **saldo de producto pendiente**, nunca el de envío — el envío ya debe estar cubierto para poder despachar (ver `04-despachos-y-envio.md`).
+El monto que se anota como "a cobrar contraentrega" en la guía es el **saldo de producto pendiente**, nunca el de envío. Ojo: desde el cambio de la regla 16 (2026-10-09) el envío **ya no tiene que estar cubierto** para poder despachar — se puede despachar con el envío pendiente confirmando explícitamente, y en ese caso el saldo de envío **no** se suma al recaudo de la guía: queda registrado en el despacho y visible en el bolsillo de envíos pendientes. Cómo se cobra después se define en la fase 3 (ver `04-despachos-y-envio.md`).
 
 ## Pago contra entrega (COD): automático e idempotente
 

@@ -287,10 +287,18 @@ class ProductionOrderController extends Controller
 
     public function dispatch(Request $request, ProductionOrder $productionOrder)
     {
-        $request->validate(['guide_number' => 'nullable|string|max:255']);
+        $request->validate([
+            'guide_number' => 'nullable|string|max:255',
+            'confirm_unpaid_shipping' => 'boolean',
+        ]);
 
         try {
-            $dispatch = $this->dispatchService->dispatch($productionOrder, $request->guide_number, auth()->user());
+            $dispatch = $this->dispatchService->dispatch(
+                $productionOrder,
+                $request->guide_number,
+                auth()->user(),
+                $request->boolean('confirm_unpaid_shipping'),
+            );
         } catch (\Exception $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }

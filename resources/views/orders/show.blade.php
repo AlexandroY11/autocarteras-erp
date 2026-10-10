@@ -372,27 +372,40 @@
         @endif
 
         @if($ds === 'pending_dispatch')
-            @if($order->shipping_balance > 0)
-                <p class="text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3">
-                    No se puede despachar: falta cubrir el envío (saldo de envío ${{ number_format($order->shipping_balance, 0, ',', '.') }}).
-                </p>
-            @else
-                <form method="POST" action="/production-orders/{{ $order->id }}/dispatch"
-                    x-data="{}"
-                    @submit="showAlert.confirm($event, '¿Despachar esta orden?', 'Sí, despachar')"
-                    class="space-y-3">
-                    @csrf
-                    @if($order->product_balance > 0)
-                        <p class="text-xs text-gray-500">Recaudo a cobrar en la entrega: <strong>${{ number_format($order->product_balance, 0, ',', '.') }}</strong></p>
-                    @else
-                        <p class="text-xs text-gray-500">Producto pagado en su totalidad — se despacha sin recaudo.</p>
-                    @endif
-                    <p class="text-xs text-gray-400">El número de guía se asigna después, por separado.</p>
-                    <button type="submit" class="w-full bg-blue-700 text-white text-sm py-3 rounded-xl font-semibold cursor-pointer">
-                        Despachar
-                    </button>
-                </form>
-            @endif
+            {{-- Regla 16: un saldo de envío pendiente ya no bloquea el despacho,
+                 pide confirmación explícita. El backend la exige igual
+                 (confirm_unpaid_shipping), así que saltarse este diálogo no
+                 alcanza para despachar sin confirmar. --}}
+            @php
+                $unpaidShipping = $order->shipping_balance > 0;
+                $dispatchConfirmMessage = $unpaidShipping
+                    ? '¿Seguro que quieres despachar sin que se haya pagado el envío?'
+                    : '¿Despachar esta orden?';
+            @endphp
+
+            <form method="POST" action="/production-orders/{{ $order->id }}/dispatch"
+                x-data="{}"
+                @submit="showAlert.confirm($event, {{ \Illuminate\Support\Js::from($dispatchConfirmMessage) }}, 'Sí, despachar')"
+                class="space-y-3">
+                @csrf
+                @if($unpaidShipping)
+                    <input type="hidden" name="confirm_unpaid_shipping" value="1">
+                    <p class="text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3">
+                        El envío todavía no está pagado (saldo de envío
+                        <strong>${{ number_format($order->shipping_balance, 0, ',', '.') }}</strong>).
+                        Si despachas, queda registrado en la guía que salió con el envío pendiente.
+                    </p>
+                @endif
+                @if($order->product_balance > 0)
+                    <p class="text-xs text-gray-500">Recaudo a cobrar en la entrega: <strong>${{ number_format($order->product_balance, 0, ',', '.') }}</strong></p>
+                @else
+                    <p class="text-xs text-gray-500">Producto pagado en su totalidad — se despacha sin recaudo.</p>
+                @endif
+                <p class="text-xs text-gray-400">El número de guía se asigna después, por separado.</p>
+                <button type="submit" class="w-full bg-blue-700 text-white text-sm py-3 rounded-xl font-semibold cursor-pointer">
+                    Despachar
+                </button>
+            </form>
         @elseif($ds === 'dispatched')
             <form method="POST" action="/production-orders/{{ $order->id }}/mark-sent"
                 x-data="{}"

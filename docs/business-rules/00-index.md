@@ -7,7 +7,7 @@ Cada archivo documenta un dominio con esta estructura por regla: **qué es** (he
 | [01-roles-y-permisos.md](01-roles-y-permisos.md) | Los 4 roles (Admin, Director, Worker, Integration) y qué puede ver/hacer cada uno. |
 | [02-produccion-y-etapas.md](02-produccion-y-etapas.md) | Las etapas de producción reales (activas e inactivas), quién puede avanzar cuáles. |
 | [03-estados-de-pedido.md](03-estados-de-pedido.md) | El ciclo de vida de un pedido: `status` y `dispatch_status`, qué es terminal y qué no. |
-| [04-despachos-y-envio.md](04-despachos-y-envio.md) | Cómo funciona el despacho manual, la guía, y el bloqueo por saldo de envío pendiente. |
+| [04-despachos-y-envio.md](04-despachos-y-envio.md) | Cómo funciona el despacho manual, la guía, la confirmación explícita para despachar con envío pendiente (regla 16) y el bolsillo de envíos. |
 | [05-pagos-y-financiero.md](05-pagos-y-financiero.md) | Snapshot de precios, distribución de pagos (envío primero), recaudo contraentrega. |
 | [06-eliminacion-y-cancelacion.md](06-eliminacion-y-cancelacion.md) | Qué se puede cancelar/eliminar y qué no — sin política de reversión de pagos inventada. |
 | [07-fechas-de-produccion.md](07-fechas-de-produccion.md) | Cómo se calcula la fecha compromiso (días hábiles, festivos). |
