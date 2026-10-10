@@ -149,6 +149,42 @@ class DispatchWithPendingShippingTest extends TestCase
         $response->assertSee('Despachar', false);
     }
 
+    /**
+     * El swipe de la lista de órdenes es un segundo acceso al despacho: con
+     * el envío sin pagar debe llevar el flag y mostrar el mismo diálogo que
+     * el detalle, en vez de chocar con el 422.
+     */
+    public function test_the_orders_list_swipe_carries_the_confirmation_flag_when_shipping_is_unpaid(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $this->orderReadyToDispatch();
+
+        $response = $this->actingAs($admin)->get('/orders');
+
+        $response->assertOk();
+        $response->assertSee('name="confirm_unpaid_shipping"', false);
+        $response->assertSee('data-confirm-text="¿Seguro que quieres despachar sin que se haya pagado el envío?"', false);
+        $response->assertSee('data-confirm-button="Sí, despachar"', false);
+    }
+
+    public function test_the_orders_list_swipe_has_no_confirmation_flag_when_shipping_is_paid(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $order = $this->orderReadyToDispatch();
+
+        Payment::factory()->create([
+            'production_order_id' => $order->id,
+            'amount' => 20000,
+            'registered_by' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/orders');
+
+        $response->assertOk();
+        $response->assertDontSee('name="confirm_unpaid_shipping"', false);
+        $response->assertDontSee('data-confirm-button', false);
+    }
+
     public function test_the_detail_view_has_no_confirmation_input_when_shipping_is_paid(): void
     {
         $admin = User::factory()->admin()->create();

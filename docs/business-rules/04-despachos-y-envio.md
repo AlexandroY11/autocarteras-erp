@@ -49,16 +49,40 @@ redespachada conserva cada intento con su propia bandera.
 la fase 3 (nómina). No asumir ningún mecanismo de cobro, recordatorio ni
 descuento.
 
-### Punto de entrada que **no** puede confirmar: el swipe de la lista
+### El swipe de la lista también confirma
 
-`orders/index.blade.php` tiene un segundo acceso al despacho (swipe sobre la
-tarjeta, formulario oculto con solo `@csrf`, líneas ~157-199) que postea a la
-misma ruta. Ese camino **no manda `confirm_unpaid_shipping`**, así que un
-pedido con envío pendiente despachado por swipe recibe el `422` y el Admin
-tiene que entrar al detalle del pedido para confirmar. No es una regresión
-(antes ese swipe también fallaba, por el bloqueo duro), pero sí una
-limitación conocida: el diálogo pedido por el dueño se implementó en el
-detalle del pedido, no en el swipe.
+`orders/index.blade.php` tiene un segundo acceso al despacho: el swipe sobre
+la tarjeta, que postea a la misma ruta con un formulario oculto. Cuando la
+tarjeta está en `pending_dispatch` **y** tiene saldo de envío pendiente, ese
+formulario lleva `confirm_unpaid_shipping=1` y el swipe muestra el mismo
+diálogo que el detalle del pedido (*"¿Seguro que quieres despachar sin que se
+haya pagado el envío?"* / *"Sí, despachar"*). En cualquier otro caso el swipe
+conserva su confirmación genérica y no manda flag.
+
+El texto del botón se pasa con `data-confirm-button`, un atributo opcional
+que lee `orders/partials/swipe-script.blade.php`. Sin él el botón sigue
+diciendo "Sí, confirmar", así que los demás swipes (`my-tasks`,
+`day-detail`, `task-card`) no cambian.
+
+**Leer el saldo de envío por tarjeta no agrega consultas:** el desglose de
+pagos se cachea por instancia (`ProductionOrder::paymentBreakdown()`) y esa
+misma tarjeta ya leía `product_balance` más abajo. Medido en `/orders` con 5
+órdenes: 13 consultas totales y 6 a `payments`, **idéntico antes y después**
+del cambio.
+
+### Hallazgo abierto — N+1 preexistente al calcular saldos en los listados
+
+La misma medición dejó a la vista algo que ya pasaba antes de este cambio:
+`PaymentAllocationService::breakdown()` consulta los pagos con
+`$order->payments()` (query builder) en vez de usar la relación que
+`OrderController::index()` ya trajo con `with('payments')`. Resultado: el
+eager load se desperdicia y se dispara **una consulta por orden** (5 órdenes
+→ 5 consultas sueltas, más la del eager load). Con 20 órdenes por página son
+20 consultas evitables.
+
+**No introducido por el cambio del swipe ni corregido acá** — arreglarlo
+toca el cálculo financiero que usa todo el ERP, así que es una decisión
+aparte.
 
 ## Bolsillo de envíos pendientes
 

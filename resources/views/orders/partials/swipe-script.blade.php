@@ -9,6 +9,10 @@
         const bg   = wrap.querySelector('[data-bg]');
         const form = wrap.querySelector('[data-form]');
         const confirmText = wrap.dataset.confirmText || '¿Confirmar esta acción?';
+        // Opcional: solo lo define el swipe de despacho con envío pendiente,
+        // para que su diálogo diga lo mismo que el del detalle del pedido.
+        // Sin el atributo, el texto es el de siempre.
+        const confirmButton = wrap.dataset.confirmButton || 'Sí, confirmar';
 
         function resetCard() {
             card.style.transform = 'translateX(0)';
@@ -109,7 +113,7 @@
                     showCancelButton: true,
                     confirmButtonColor: '#1d4ed8',
                     cancelButtonColor: '#6b7280',
-                    confirmButtonText: 'Sí, confirmar',
+                    confirmButtonText: confirmButton,
                     cancelButtonText: 'Cancelar',
                     reverseButtons: true
                 }).then(result => {

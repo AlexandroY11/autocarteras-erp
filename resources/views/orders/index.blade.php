@@ -182,10 +182,27 @@
                 }
 
                 $canSwipe = $canSwipe && auth()->user()->isAdmin();
+
+                // Swipe de despacho con el envío sin pagar (regla 16): mismo
+                // diálogo y mismo flag que el formulario del detalle del
+                // pedido, para que este camino también pueda confirmar en vez
+                // de chocar con el 422. Solo para este caso — los demás
+                // swipes conservan su confirmación genérica.
+                //
+                // shipping_balance no agrega consultas acá: el desglose de
+                // pagos se cachea por instancia (ProductionOrder::paymentBreakdown())
+                // y esta misma tarjeta ya lee product_balance más abajo.
+                $swipeUnpaidShipping = $isDispatchPhase
+                    && $order->dispatch_status === 'pending_dispatch'
+                    && $order->shipping_balance > 0;
             @endphp
             <div
                 data-swipeable
                 data-can-advance="{{ $canSwipe ? '1' : '0' }}"
+                @if($swipeUnpaidShipping)
+                    data-confirm-text="¿Seguro que quieres despachar sin que se haya pagado el envío?"
+                    data-confirm-button="Sí, despachar"
+                @endif
                 class="relative overflow-hidden rounded-2xl
                     {{ !$canSwipe ? 'opacity-90' : '' }}"
             >
@@ -206,6 +223,9 @@
                     action="{{ $swipeAction }}"
                     class="hidden">
                     @csrf
+                    @if($swipeUnpaidShipping)
+                        <input type="hidden" name="confirm_unpaid_shipping" value="1">
+                    @endif
                 </form>
                 @endif
 
