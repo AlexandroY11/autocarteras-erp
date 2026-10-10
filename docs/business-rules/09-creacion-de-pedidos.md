@@ -12,6 +12,22 @@ Crear un pedido (`GET /production-orders/create`, `POST /production-orders`) es 
 - **`created_by`** — el usuario autenticado que crea el pedido, nunca viene del cliente.
 - **`consecutive`** — número correlativo generado por el backend (ver hallazgo abajo sobre cómo, exactamente).
 
+## `seller_id` (quién vendió) vs. `created_by` (quién registró)
+
+Son **dos datos distintos e independientes**, y ambos se guardan:
+
+- **`created_by`** — quién registró el pedido en el sistema. No cambió nada: sigue siendo el usuario autenticado, y en los pedidos del bot es siempre la cuenta técnica de integración.
+- **`seller_id`** — quién vendió. Nullable; `NULL` significa **"no definido"**, no "sin vendedor". Todos los pedidos anteriores a esta columna quedaron en `NULL`.
+
+Cómo se llena según el canal:
+
+- **Bot de WhatsApp:** se resuelve desde `seller_phone` (el remitente en Chatwoot) contra la tabla `seller_phones`. Si el teléfono no está registrado o apunta a alguien que no es un vendedor válido, el pedido se rechaza con `422` — nunca se asigna un vendedor por defecto. Ver `15-integracion-whatsapp.md`.
+- **Formulario web:** selector **opcional** ("Vendedor"). Dejarlo vacío guarda `NULL`. Viene preseleccionado con el usuario configurado en `DEFAULT_SELLER_USER_ID` (`config/business.php`), que vive en el entorno para no fijar un id de producción en el código; si la variable no está puesta o apunta a alguien que no es un vendedor válido, el selector arranca vacío.
+
+**"Vendedor válido" tiene una sola definición**, `User::scopeSellers()`: usuario **activo** que **no** sea la cuenta de integración. La usan el selector del formulario, la validación de `seller_id`, la resolución por teléfono del bot y el comando que vincula los números.
+
+**Solo se puede asignar al crear.** El formulario de edición (`orders/edit.blade.php`) no incluye el selector, así que un pedido creado sin vendedor no se puede corregir desde la UI. Queda pendiente para una fase posterior — no se implementó a propósito, estaba fuera del alcance acordado.
+
 ## Hallazgo — pendiente de decisión de negocio: `price` y `due_date` se aceptan directamente del formulario, sin recalcular server-side
 
 `ProductionOrderController::store()` valida `'price' => 'required|numeric|min:0'` y `'due_date' => 'required|date'` — solo verifica que sean un número/fecha válidos, **no que coincidan con `product.base_price` ni con el cálculo de `BusinessDaysService`**. Ambos se pasan tal cual al DTO y se guardan. Confirmado en el formulario (`orders/form.blade.php:346`): el campo de fecha es un `<input type="date">` genuinamente editable (`x-model="dueDate"`), con un texto de ayuda ("Calculada: 15 días hábiles") que es solo una sugerencia visual, no un valor forzado por el servidor. El campo de precio se comporta igual: se pre-llena en el frontend con el `base_price` del producto seleccionado, pero el valor final que llega al servidor es el que haya quedado en el input, editable.

@@ -52,6 +52,7 @@ class ProductionOrder extends Model
         'status',
         'dispatch_status',
         'created_by',
+        'seller_id',
         'idempotency_key',
         'origin',
     ];
@@ -85,6 +86,16 @@ class ProductionOrder extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Quién vendió — independiente de createdBy(), que es quién registró el
+     * pedido en el sistema (para el bot, siempre la cuenta de integración).
+     * NULL significa "no definido".
+     */
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'seller_id');
     }
 
     /**

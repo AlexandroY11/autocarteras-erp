@@ -288,6 +288,29 @@
             </div>
         </div>
 
+        {{-- ── VENDEDOR ── --}}
+        {{-- Opcional: quién vendió, distinto de quién registra el pedido (eso
+             queda en created_by, automático). Dejarlo vacío guarda NULL =
+             "no definido". Sección propia a propósito: no es un atributo del
+             producto ni del cliente. --}}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+            <h2 class="flex items-center gap-2 font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-500">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                </svg>
+                Vendedor
+            </h2>
+            <div class="space-y-1">
+                <x-searchable-select
+                    name="seller_id"
+                    placeholder="Sin definir..."
+                    :selected="old('seller_id', $defaultSellerId)"
+                    :options="$sellers->map(fn($s) => ['value' => (string) $s->id, 'label' => $s->name])->toArray()"
+                />
+                @error('seller_id') <p class="text-red-500 text-[10px] font-bold">{{ $message }}</p> @enderror
+            </div>
+        </div>
+
         {{-- ── PRODUCTO ── --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
             <h2 class="flex items-center gap-2 font-semibold text-gray-700 text-sm uppercase tracking-wide">
@@ -295,7 +318,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
                 </svg>
                 Producto
-            </h2>            
+            </h2>
             <div x-on:selected="selectProduct($event.detail.value)">
                 <x-searchable-select
                     name="product_id"

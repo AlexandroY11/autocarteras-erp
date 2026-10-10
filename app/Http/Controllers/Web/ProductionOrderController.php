@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductionOrder;
 use App\Models\Stage;
+use App\Models\User;
 use App\Modules\Dispatch\Services\DispatchService;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
 use App\Modules\Production\Services\ProductionOrderService;
@@ -79,11 +80,23 @@ class ProductionOrderController extends Controller
     {
         $products = Product::where('active', true)->orderBy('name')->get();
         $departments = Department::orderBy('name')->get();
+        $sellers = User::query()->sellers()->orderBy('name')->get();
+
+        // Preselección configurable por entorno (config/business.php), para no
+        // fijar un id de producción en el código. Solo se aplica si ese id
+        // está entre los vendedores listados: si la variable no está puesta o
+        // apunta a alguien inactivo, el selector arranca vacío.
+        $defaultSellerId = config('business.default_seller_user_id');
+        $defaultSellerId = $sellers->contains('id', (int) $defaultSellerId)
+            ? (string) $defaultSellerId
+            : null;
 
         return view('orders.form', [
             'order' => new ProductionOrder(),
             'products' => $products,
             'departments' => $departments,
+            'sellers' => $sellers,
+            'defaultSellerId' => $defaultSellerId,
         ]);
     }
 
@@ -110,6 +123,15 @@ class ProductionOrderController extends Controller
             'price' => 'required|numeric|min:0',
             'due_date' => 'required|date',
             'advance_payment' => 'nullable|numeric|min:0',
+
+            // Opcional: "no definido" es un valor válido. La condición de
+            // vendedor válido no se reescribe acá — se consulta el scope del
+            // modelo, que es su única definición.
+            'seller_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if (! User::query()->sellers()->whereKey($value)->exists()) {
+                    $fail('El vendedor seleccionado no es válido.');
+                }
+            }],
         ]);
 
         // NOTA: 'advance_payment' se valida aquí y se usa más abajo para crear
@@ -156,6 +178,7 @@ class ProductionOrderController extends Controller
                     'observations' => $request->observations,
                     'price' => $request->price,
                     'due_date' => $request->due_date,
+                    'seller_id' => $request->seller_id,
                 ]),
                 auth()->id()
             );

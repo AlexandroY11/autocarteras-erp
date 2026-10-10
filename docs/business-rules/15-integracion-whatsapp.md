@@ -34,7 +34,7 @@ endpoint financiero, aunque comparta el mismo guard `auth:sanctum`.
 campo.
 
 **Opcionales:** `client_email`, `sticker` (boolean), `sticker_color` (texto
-libre), `advance_amount`, `observations`, `payment_method`.
+libre), `advance_amount`, `observations`, `payment_method`, `seller_phone`.
 
 **Nunca se acepta `price` ni `shipping_price` del payload** — si vinieran,
 se ignoran. Ambos siempre son el snapshot del catálogo en el momento de
@@ -78,6 +78,67 @@ no una lista inventada acá. Si el vendedor no dicta el método, el anticipo
 queda en `efectivo`, que es lo que este endpoint hacía fijo antes. Solo
 aplica cuando viene `advance_amount`: sin anticipo no se crea ningún pago, y
 `payment_method` se ignora.
+
+## `seller_phone` — quién vendió
+
+Opcional hoy. Es el teléfono del **remitente en Chatwoot**: el vendedor que
+sostuvo la conversación, no el cliente. El ERP lo resuelve contra la tabla
+`seller_phones` y guarda el resultado en `production_orders.seller_id`.
+
+- **Sin `seller_phone`** → el pedido se crea con `seller_id = NULL` ("no
+  definido").
+- **Teléfono no registrado** → `422`, `"El teléfono del vendedor no está
+  registrado."`
+- **Teléfono de un usuario inactivo, borrado, o de la cuenta de
+  integración** → `422`, `"El vendedor está inactivo o ya no existe."`
+- **Nunca se asigna un vendedor por defecto.** Es preferible rechazar el
+  pedido a atribuirle la venta a quien no fue.
+
+Los dos errores llegan como errores de validación sobre el campo
+`seller_phone`, con la misma forma que el resto del contrato.
+
+**`seller_id` no reemplaza a `created_by`.** `created_by` sigue siendo quién
+registró el pedido en el sistema — para este endpoint, siempre la cuenta
+técnica de integración. Son dos datos distintos y ambos se guardan.
+
+### Normalización del teléfono
+
+`SellerPhone::normalize()` deja solo dígitos, y es la **misma** función que
+usan el comando de vinculación y la resolución del bot. Así `+573172196131`,
+`573172196131` y `+57 317 219 6131` son el mismo registro.
+
+Deliberadamente **no** adivina el indicativo del país: si el bot manda un
+número sin él, no resuelve y responde `422`. Falla cerrado antes que
+asignarle la venta al vendedor equivocado — tenerlo en cuenta al configurar
+n8n.
+
+### Tabla `seller_phones` y cómo se cargan los números
+
+Tabla propia (`phone` único + `user_id`), no un campo en `users`, por dos
+razones: un vendedor puede tener **varios** números (Jhon Alex tiene dos), y
+`users.phone` es un dato de contacto que un Admin edita libremente desde el
+panel — mezclarlos haría que cambiarlo ahí rompiera la resolución del bot
+sin que nadie se entere.
+
+Se cargan con un comando, **no** con un seeder ni una migración de datos (los
+ids y los números son datos de producción, no pertenecen al repositorio):
+
+```
+php artisan whatsapp:link-seller-phone {user_id} {phone} [--force]
+```
+
+Es idempotente (correrlo dos veces no duplica nada), rechaza un `user_id`
+que no sea un vendedor válido, y **se niega a mover un número de un vendedor
+a otro** salvo que se pase `--force`. Al terminar imprime el mapeo completo.
+
+### Paso pendiente — apretar `seller_phone` a obligatorio
+
+Queda opcional **solo para el despliegue inicial**, porque n8n todavía no lo
+manda siempre. Cuando el flujo de n8n lo envíe en todas las llamadas, hay
+que cambiar la validación de `nullable` a `required` en
+`WhatsappOrderController::store()` y mover el campo a la lista de
+obligatorios de este documento. Decisión ya tomada por el usuario; solo
+falta el momento.
 
 ## Correo al crear el pedido
 

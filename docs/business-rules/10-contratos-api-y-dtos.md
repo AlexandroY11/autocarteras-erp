@@ -37,6 +37,33 @@ Antes de cambiar el nombre de un campo de una respuesta API existente:
 
 **Nunca cambiar nombres de campos en silencio** — ni siquiera si el nombre nuevo es "más correcto".
 
+## Campos de creación que el camino de edición nunca reescribe
+
+`ProductionOrderService::update()` excluye `seller_id`, `origin` e
+`idempotency_key` del `toArray()` del DTO antes de aplicarlo
+(`CREATION_ONLY_FIELDS`). No es una precaución teórica: **ninguno de los dos
+controllers de edición** (web `ProductionOrderController::update()` y la API
+`Modules/Production/Controllers/ProductionOrderController::update()`) incluye
+esos campos al armar el DTO, así que `toArray()` aportaba sus valores por
+defecto (`null` / `'manual'`) y el `update()` los escribía encima en
+silencio. Consecuencias que esto producía al editar **cualquier** campo de un
+pedido:
+
+- `seller_id` → `NULL`: se perdía quién vendió.
+- `origin` → `'manual'`: un pedido creado por el bot pasaba a figurar como
+  creado a mano.
+- `idempotency_key` → `NULL`: **lo más grave**. Sin la key, un reintento de
+  n8n con esa misma key ya no encuentra la orden y crea un **pedido
+  duplicado** — justo lo que la idempotencia existe para evitar.
+
+Los dos primeros aparecieron al agregar esos campos al DTO; el tercero
+existía desde que se agregó `idempotency_key`. La protección vive en el
+servicio, no en los controllers, para que valga también para cualquier
+camino de edición que se agregue después. Cubierto por
+`tests/Feature/OrderUpdatePreservesCreationFieldsTest.php`, verificada
+además revirtiendo el arreglo para comprobar que la prueba efectivamente
+falla sin él.
+
 ## Qué queda sin definir
 
 - No hay lista formal de qué integraciones externas (aparte de n8n) consumen `PaymentService::summary()` hoy — hay que preguntar antes de asumir que es seguro quitar los campos antiguos.

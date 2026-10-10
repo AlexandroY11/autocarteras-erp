@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
 use App\Services\Mail\MailService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 
 class ProductionOrderService
@@ -103,9 +104,30 @@ class ProductionOrderService
         }
     }
 
+    /**
+     * Campos que se fijan al crear y que ningún camino de edición debe
+     * reescribir. No es una precaución teórica: ninguno de los dos
+     * controllers de edición (web y API) los incluye al armar el DTO, así
+     * que ProductionOrderDTO::toArray() aporta sus valores por defecto
+     * (null / 'manual') y un update() a secas los escribía encima,
+     * silenciosamente:
+     *
+     * - seller_id    -> NULL: se perdía quién vendió.
+     * - origin       -> 'manual': un pedido del bot pasaba a figurar como
+     *                   creado a mano.
+     * - idempotency_key -> NULL: lo más grave. Sin la key, un reintento de
+     *                   n8n con esa misma key ya no encuentra la orden y
+     *                   crea un PEDIDO DUPLICADO.
+     *
+     * La protección vive acá y no en los controllers para que valga para
+     * los dos caminos y para cualquiera que se agregue después.
+     */
+    private const CREATION_ONLY_FIELDS = ['seller_id', 'origin', 'idempotency_key'];
+
     public function update(ProductionOrder $order, ProductionOrderDTO $dto): ProductionOrder
     {
-        $order->update($dto->toArray());
+        $order->update(Arr::except($dto->toArray(), self::CREATION_ONLY_FIELDS));
+
         return $order->load(['client', 'product', 'currentStage']);
     }
 

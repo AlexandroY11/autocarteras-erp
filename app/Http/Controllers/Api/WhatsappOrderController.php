@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\ProductionOrder;
 use App\Models\Product;
+use App\Models\SellerPhone;
+use App\Models\User;
 use App\Modules\Payments\DTOs\PaymentDTO;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Production\DTOs\ProductionOrderDTO;
@@ -17,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Creación de pedidos vía el bot de WhatsApp/n8n. Reemplaza por completo la
@@ -70,6 +73,7 @@ class WhatsappOrderController extends Controller
             'observations'      => 'nullable|string|max:1000',
             'advance_amount'    => 'nullable|numeric|min:0',
             'payment_method'    => 'nullable|in:efectivo,nequi,nu',
+            'seller_phone'      => 'nullable|string|max:20',
         ], [
             'idempotency_key.required'  => 'idempotency_key es obligatorio.',
             'client_first_name.required'=> 'El nombre del cliente es obligatorio.',
@@ -96,6 +100,8 @@ class WhatsappOrderController extends Controller
             return $this->respond($existing, 200, true);
         }
 
+        $seller = $this->resolveSeller($validated['seller_phone'] ?? null);
+
         [$client, $conflictNote] = $this->resolveClient($validated);
         $product = Product::findOrFail($validated['product_id']);
         $dueDate = $this->businessDays->calculateDueDate(15)->toDateString();
@@ -118,7 +124,7 @@ class WhatsappOrderController extends Controller
             : implode("\n\n", $observationParts);
 
         try {
-            $order = DB::transaction(function () use ($validated, $client, $product, $dueDate, $observations) {
+            $order = DB::transaction(function () use ($validated, $client, $product, $dueDate, $observations, $seller) {
                 $order = $this->productionOrderService->create(
                     ProductionOrderDTO::fromRequest([
                         'client_id'       => $client->id,
@@ -131,6 +137,7 @@ class WhatsappOrderController extends Controller
                         'due_date'        => $dueDate,
                         'idempotency_key' => $validated['idempotency_key'],
                         'origin'          => 'whatsapp',
+                        'seller_id'       => $seller?->id,
                     ]),
                     auth()->id()
                 );
@@ -189,6 +196,47 @@ class WhatsappOrderController extends Controller
         $this->productionOrderService->notifyCreated($order);
 
         return $this->respond($order, 201, false);
+    }
+
+    /**
+     * Resuelve el vendedor desde el teléfono del remitente en Chatwoot.
+     *
+     * Reglas, decididas por el usuario:
+     * - Sin `seller_phone` → se crea el pedido con seller_id = NULL ("no
+     *   definido"). Hoy el campo es opcional porque n8n todavía no lo manda
+     *   siempre; ver el paso pendiente en 15-integracion-whatsapp.md.
+     * - Con un teléfono que no está registrado, o que apunta a un usuario
+     *   inactivo o a la cuenta de integración → 422. **Nunca se asigna un
+     *   vendedor por defecto**: es preferible rechazar el pedido a
+     *   atribuirle la venta a quien no fue.
+     *
+     * El 422 se lanza como error de validación sobre el propio campo para
+     * que n8n lo reciba con la misma forma que el resto de los errores del
+     * contrato, no como un formato aparte.
+     */
+    private function resolveSeller(?string $sellerPhone): ?User
+    {
+        if (blank($sellerPhone)) {
+            return null;
+        }
+
+        $phone = SellerPhone::where('phone', SellerPhone::normalize($sellerPhone))->first();
+
+        if (! $phone) {
+            throw ValidationException::withMessages([
+                'seller_phone' => 'El teléfono del vendedor no está registrado.',
+            ]);
+        }
+
+        $seller = User::query()->sellers()->find($phone->user_id);
+
+        if (! $seller) {
+            throw ValidationException::withMessages([
+                'seller_phone' => 'El vendedor está inactivo o ya no existe.',
+            ]);
+        }
+
+        return $seller;
     }
 
     /**

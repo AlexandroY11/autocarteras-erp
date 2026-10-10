@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -57,6 +59,22 @@ class User extends Authenticatable
     public function skills(): BelongsToMany
     {
         return $this->belongsToMany(Stage::class, 'user_skills');
+    }
+
+    public function sellerPhones(): HasMany
+    {
+        return $this->hasMany(SellerPhone::class);
+    }
+
+    /**
+     * Única definición de "vendedor válido": usuario activo que no sea la
+     * cuenta técnica de integración. La usan el selector del formulario de
+     * creación, la validación de seller_id y la resolución por teléfono del
+     * bot — si cambia el criterio, cambia en un solo lugar.
+     */
+    public function scopeSellers(Builder $query): Builder
+    {
+        return $query->where('active', true)->where('role', '!=', 'integration');
     }
 
     public function isAdmin(): bool

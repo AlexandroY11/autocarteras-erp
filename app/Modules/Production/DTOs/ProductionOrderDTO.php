@@ -18,6 +18,9 @@ class ProductionOrderDTO
         // para ellos. Solo los usa WhatsappOrderController.
         public readonly ?string $idempotency_key = null,
         public readonly string  $origin = 'manual',
+        // Quién vendió. Opcional y null por defecto: los pedidos manuales
+        // pueden no indicarlo, y "no definido" es un valor válido.
+        public readonly ?int    $seller_id = null,
     ) {}
 
     public static function fromRequest(array $data): self
@@ -33,6 +36,7 @@ class ProductionOrderDTO
             due_date:        $data['due_date'],
             idempotency_key: $data['idempotency_key'] ?? null,
             origin:          $data['origin'] ?? 'manual',
+            seller_id:       $data['seller_id'] ?? null,
         );
     }
 
@@ -49,6 +53,7 @@ class ProductionOrderDTO
             'due_date'        => $this->due_date,
             'idempotency_key' => $this->idempotency_key,
             'origin'          => $this->origin,
+            'seller_id'       => $this->seller_id,
         ];
     }
 }
